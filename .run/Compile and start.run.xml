@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+    <configuration default="false" name="Compile and start" type="JarApplication">
+        <extension name="net.ashald.envfile">
+            <option name="IS_ENABLED" value="false" />
+            <option name="IS_SUBST" value="false" />
+            <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+            <option name="IS_IGNORE_MISSING_FILES" value="false" />
+            <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+            <ENTRIES>
+                <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
+            </ENTRIES>
+        </extension>
+        <option name="JAR_PATH" value="$PROJECT_DIR$/server/paper-1.20.1-196.jar" />
+        <option name="PROGRAM_PARAMETERS" value="nogui" />
+        <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$\server" />
+        <option name="ALTERNATIVE_JRE_PATH" />
+        <method v="2">
+            <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/pom.xml" goal="package" />
+        </method>
+    </configuration>
+</component>

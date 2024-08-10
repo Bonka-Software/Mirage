@@ -1,0 +1,8 @@
+name: Mirage
+version: '${project.version}'
+main: gg.bonka.mirage.Mirage
+api-version: '1.20'
+load: STARTUP
+authors: [Stanley Dam @ Bonka Software]
+description: A minecraft plugin that can reset worlds at server startup
+website: https://bonka.gg/
