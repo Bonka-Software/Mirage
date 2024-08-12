@@ -1,6 +1,7 @@
 package gg.bonka.mirage.filesystem;
 
 import gg.bonka.mirage.misc.ConsoleLogger;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.codehaus.plexus.util.FileUtils;
 
@@ -9,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -19,13 +22,25 @@ import java.util.stream.Stream;
  */
 public class WorldsDirectoryManager {
 
+    @Getter
+    private static WorldsDirectoryManager instance;
+
     private final File worldsDirectory = new File(Bukkit.getWorldContainer(), "worlds");
+
+    @Getter
+    private final HashSet<String> worlds = new HashSet<>();
 
     /**
      * The WorldsDirectoryManager class is responsible for managing the worlds directory
      * and saving worlds to that directory.
      */
     public WorldsDirectoryManager() throws IOException {
+        if(instance != null) {
+            throw new IllegalStateException("Singleton WorldsDirectoryManager has already been initialized");
+        }
+
+        instance = this;
+
         Properties serverProperties = new Properties();
         serverProperties.load(Files.newInputStream(new File(Bukkit.getWorldContainer(), "server.properties").toPath()));
 
@@ -39,6 +54,8 @@ public class WorldsDirectoryManager {
         if(netherEnabled) {
             worldNames[2] = String.format("%s_nether", worldName);
         }
+
+        worlds.addAll(List.of(worldNames));
 
         if(worldsDirectory.mkdirs()) {
             //Save the existing worlds when this plugin is enabled for the first time!

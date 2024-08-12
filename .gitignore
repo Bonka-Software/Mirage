@@ -113,6 +113,5 @@ buildNumber.properties
 run/
 server/*
 
-!server/server.properties
 !server/server-icon.png
 !server/README.md
