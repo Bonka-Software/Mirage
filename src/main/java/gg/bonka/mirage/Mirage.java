@@ -5,6 +5,8 @@ import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.multiverse.commands.WorldCommand;
 import lombok.Getter;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -42,6 +44,11 @@ public final class Mirage extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        //Speeds up the server shutdown a lot!
+        //Bukkit will automatically save the worlds by default, but we obviously don't want that!
+        for(World world : Bukkit.getWorlds()) {
+            if(WorldsDirectoryManager.getInstance().getWorldNames().contains(world.getName()))
+                Bukkit.unloadWorld(world, false);
+        }
     }
 }

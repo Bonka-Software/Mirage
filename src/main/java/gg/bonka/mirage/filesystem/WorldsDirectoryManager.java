@@ -122,6 +122,56 @@ public class WorldsDirectoryManager {
     }
 
     /**
+     * Asynchronously removes the specified world from the worlds directory.
+     * This operation may not be executed in the main thread.
+     *
+     * @param worldName The name of the world to be removed.
+     * @param callback  The callback to be called after removing the world. It receives a boolean indicating the success status and a message providing more information.
+     */
+    public void removeWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    removeWorld(worldName);
+
+                    callback.callback(true, "");
+                    this.cancel();
+                } catch (IOException e) {
+                    callback.callback(false, String.format("Something went wrong while trying to remove %s, the error stack trace has been printed to the console.", worldName));
+                    this.cancel();
+
+                    throw new RuntimeException(e);
+                }
+            }
+        }.runTaskAsynchronously(Mirage.getInstance());
+    }
+
+    /**
+     * Removes the specified world from the worlds directory. This method deletes the world directory and the save directory associated with the specified world.
+     * <br><br>
+     * <b>This operation is very CPU heavy, only use on startup!</b>
+     * @see WorldsDirectoryManager#removeWorldAsync(String, AsyncWorldDirectoryCallback)
+     *
+     * @param worldName The name of the world to remove.
+     * @throws IOException If an error occurs while removing the world.
+     */
+    public void removeWorld(String worldName) throws IOException {
+        File worldDirectory = new File(Bukkit.getWorldContainer(), worldName);
+        File saveDirectory = new File(worldsDirectory, worldName);
+
+        if(worldDirectory.exists()) {
+            FileUtils.deleteDirectory(worldDirectory);
+        }
+
+        if(saveDirectory.exists()) {
+            FileUtils.deleteDirectory(saveDirectory);
+        }
+
+        worldNames.remove(worldName);
+    }
+
+    /**
      * Loads the specified worlds into the game.
      *
      * @param worldNames The names of the worlds to load.
@@ -159,7 +209,8 @@ public class WorldsDirectoryManager {
     }
 
     /**
-     * Loads the specified world into the game.<br>
+     * Loads the specified world into the game.
+     * <br><br>
      * <b>This operation is very CPU heavy, only use on startup!</b>
      * @see WorldsDirectoryManager#loadWorldAsync(String, AsyncWorldDirectoryCallback)
      *

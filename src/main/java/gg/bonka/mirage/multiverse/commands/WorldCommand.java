@@ -57,11 +57,68 @@ public class WorldCommand extends BaseCommand {
         );
     }
 
+    @Subcommand("remove")
+    @CommandCompletion("@world @world @range:1")
+    @Description("Deletes the given world, will send the players in the world to the destination world, will show them a message when you choose the show them!")
+    @CommandPermission("mirage.command.world.remove")
+    public void remove(Player player, @Single String worldName, @Single String destinationWorldName, @Single String showMessage) {
+        if(!WorldsDirectoryManager.getInstance().getWorldNames().contains(worldName)) {
+            player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
+            return;
+        }
+
+        if(!WorldsDirectoryManager.getInstance().getWorldNames().contains(destinationWorldName)) {
+            player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", destinationWorldName), ChatColor.ERROR));
+            return;
+        }
+
+        int showMessageBoolean;
+
+        try {
+            showMessageBoolean = Integer.parseInt(showMessage);
+        } catch (NumberFormatException e) {
+            player.sendMessage(Chat.format(String.format("Invalid value for showMessage: %s, should either be 0 or 1", showMessage), ChatColor.ERROR));
+            return;
+        }
+
+        player.sendMessage(Chat.format(String.format("Deleting world: %s", worldName), ChatColor.INFO));
+
+        World world = Bukkit.getWorld(worldName);
+        World destination = Bukkit.createWorld(new WorldCreator(destinationWorldName));
+
+        if(world != null) {
+            for(Player p : world.getPlayers()) {
+                if(destination != null) {
+                    p.teleport(destination.getSpawnLocation());
+
+                    if(showMessageBoolean > 0)
+                        p.sendMessage(Chat.format(String.format("The world %s is being removed!", worldName), ChatColor.ERROR));
+                }
+            }
+
+            Bukkit.unloadWorld(world, false);
+        }
+
+        WorldsDirectoryManager.getInstance().removeWorldAsync(worldName, (success, message) -> {
+            if (success) {
+                player.sendMessage(Chat.format(String.format("World: %s has been removed successfully!", worldName), ChatColor.SUCCESS));
+                registerWorldArguments();
+            } else {
+                player.sendMessage(Chat.format(message, ChatColor.ERROR));
+            }
+        });
+    }
+
     @Subcommand("go")
     @CommandCompletion("@world")
     @Description("Teleport to the given world")
     @CommandPermission("mirage.command.world.teleport")
     public void go(Player player, @Single String worldName) {
+        if(!WorldsDirectoryManager.getInstance().getWorldNames().contains(worldName)) {
+            player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
+            return;
+        }
+
         World world = Bukkit.getWorld(worldName);
 
         if(world == null) {
