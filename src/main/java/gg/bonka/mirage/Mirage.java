@@ -4,18 +4,28 @@ import co.aikar.commands.PaperCommandManager;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.multiverse.commands.WorldCommand;
+import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 
 public final class Mirage extends JavaPlugin {
 
-    public static PaperCommandManager commandManager;
-
     private final static String version = "0.0.1";
+
+    @Getter
+    private static Mirage instance;
+
+    @Getter
+    private PaperCommandManager commandManager;
 
     @Override
     public void onEnable() {
+        if(instance != null) {
+            throw new IllegalStateException("Mirage instance already exists!");
+        }
+
+        instance = this;
         ConsoleLogger.info(String.format("Mirage [%s] has been enabled!", version));
 
         try {
