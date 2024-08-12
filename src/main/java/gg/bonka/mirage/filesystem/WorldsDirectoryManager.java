@@ -10,10 +10,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -28,7 +30,7 @@ public class WorldsDirectoryManager {
     private final File worldsDirectory = new File(Bukkit.getWorldContainer(), "worlds");
 
     @Getter
-    private final HashSet<String> worlds = new HashSet<>();
+    private final HashSet<String> worldNames = new HashSet<>();
 
     /**
      * The WorldsDirectoryManager class is responsible for managing the worlds directory
@@ -47,23 +49,40 @@ public class WorldsDirectoryManager {
         String worldName = serverProperties.getProperty("level-name");
         boolean netherEnabled = Boolean.getBoolean(serverProperties.getProperty("allow-nether"));
 
-        String[] worldNames = new String[netherEnabled ? 3 : 2];
-        worldNames[0] = worldName;
-        worldNames[1] = String.format("%s_the_end", worldName);
-
-        if(netherEnabled) {
-            worldNames[2] = String.format("%s_nether", worldName);
-        }
-
-        worlds.addAll(List.of(worldNames));
-
+        //Save the existing worlds when this plugin is enabled for the first time!
         if(worldsDirectory.mkdirs()) {
-            //Save the existing worlds when this plugin is enabled for the first time!
-            saveWorlds(worldNames);
+            initializeMirage(worldName, netherEnabled);
             return;
         }
 
-        loadWorlds(worldNames);
+        File[] worlds = worldsDirectory.listFiles((dir, name) -> dir.isDirectory());
+
+        assert worlds != null;
+        worldNames.addAll(Arrays.stream(worlds).map(File::getName).collect(Collectors.toList()));
+
+        //TODO: Add the option to only load a world when requested in a config file!
+        loadWorlds(worldNames.toArray(new String[0]));
+    }
+
+    /**
+     * Initializes Mirage by creating and saving the names of the worlds to be managed.
+     *
+     * @param worldName        The name of the main world to be managed.
+     * @param isNetherEnabled  A boolean indicating whether the Nether world should be enabled.
+     * @throws IOException     If an error occurs while saving the worlds.
+     */
+    private void initializeMirage(String worldName, boolean isNetherEnabled) throws IOException {
+        String[] worldNames = new String[isNetherEnabled ? 3 : 2];
+        worldNames[0] = worldName;
+        worldNames[1] = String.format("%s_the_end", worldName);
+
+        if(isNetherEnabled) {
+            worldNames[2] = String.format("%s_nether", worldName);
+        }
+
+        this.worldNames.addAll(List.of(worldNames));
+
+        saveWorlds(worldNames);
     }
 
     /**

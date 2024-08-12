@@ -10,6 +10,8 @@ import java.io.IOException;
 
 public final class Mirage extends JavaPlugin {
 
+    public static PaperCommandManager commandManager;
+
     private final static String version = "0.0.1";
 
     @Override
@@ -22,9 +24,9 @@ public final class Mirage extends JavaPlugin {
             throw new RuntimeException("Error occurred while trying to set up the mirage file directory system", e);
         }
 
-        //Register commands
-        PaperCommandManager commandManager = new PaperCommandManager(this);
+        commandManager = new PaperCommandManager(this);
 
+        //Register commands
         commandManager.registerCommand(new WorldCommand());
     }
 
