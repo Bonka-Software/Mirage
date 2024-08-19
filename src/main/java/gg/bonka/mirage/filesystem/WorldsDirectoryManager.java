@@ -1,9 +1,14 @@
 package gg.bonka.mirage.filesystem;
 
 import gg.bonka.mirage.Mirage;
+import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
+import gg.bonka.mirage.misc.Chat;
+import gg.bonka.mirage.misc.ChatColor;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import lombok.Getter;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.codehaus.plexus.util.FileUtils;
 
@@ -14,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Properties;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -24,14 +28,19 @@ import java.util.stream.Stream;
  * The WorldsDirectoryManager class is responsible for managing the worlds directory
  * and saving worlds to that directory.
  */
+@Getter
 public class WorldsDirectoryManager {
+
+    private static final File serverPath = Bukkit.getPluginsFolder().getParentFile();
 
     @Getter
     private static WorldsDirectoryManager instance;
 
-    private final File worldsDirectory = new File(Bukkit.getWorldContainer(), "worlds");
+    private final String relativeSaveDirectory = "mirage/saved-worlds";
 
-    @Getter
+    private final File activeDirectory = Bukkit.getWorldContainer();
+    private final File saveDirectory = new File(serverPath, relativeSaveDirectory);
+
     private final HashSet<String> worldNames = new HashSet<>();
 
     /**
@@ -49,15 +58,15 @@ public class WorldsDirectoryManager {
         serverProperties.load(Files.newInputStream(new File(Bukkit.getWorldContainer(), "server.properties").toPath()));
 
         String worldName = serverProperties.getProperty("level-name");
-        boolean netherEnabled = Boolean.getBoolean(serverProperties.getProperty("allow-nether"));
+        boolean netherEnabled = Boolean.parseBoolean(serverProperties.getProperty("allow-nether"));
 
         //Save the existing worlds when this plugin is enabled for the first time!
-        if(worldsDirectory.mkdirs()) {
+        if(saveDirectory.mkdirs()) {
             initializeMirage(worldName, netherEnabled);
             return;
         }
 
-        File[] worlds = worldsDirectory.listFiles((dir, name) -> dir.isDirectory());
+        File[] worlds = saveDirectory.listFiles((dir, name) -> dir.isDirectory());
 
         assert worlds != null;
         worldNames.addAll(Arrays.stream(worlds).map(File::getName).collect(Collectors.toList()));
@@ -67,29 +76,30 @@ public class WorldsDirectoryManager {
     }
 
     /**
-     * Saves the specified worlds to the worlds directory.
+     * Saves the specified world asynchronously to the saved-worlds directory.
      *
-     * @param worldNames The names of the worlds to save.
-     * @throws IOException If an error occurs while saving the worlds.
+     * @param worldName the name of the world
+     * @param callback  the callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
+     * @throws RuntimeException if an IOException occurs while saving the world
      */
-    public void saveWorlds(String... worldNames) throws IOException {
-        for(String worldName : worldNames) {
-            saveWorld(worldName);
-        }
+    public void saveWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
+        saveWorldAsync(new File(activeDirectory, worldName), worldName, callback);
     }
 
     /**
-     * Asynchronously saves the specified world to the worlds directory.
+     * Saves the specified world asynchronously to the worlds directory.
      *
-     * @param worldName The name of the world to save.
-     * @param callback  The callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
+     * @param source    the entire path of the world directory
+     * @param worldName the name of the world
+     * @param callback  the callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
+     * @throws RuntimeException if an IOException occurs while saving the world
      */
-    public void saveWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
+    private void saveWorldAsync(File source, String worldName, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
                 try {
-                    saveWorld(worldName);
+                    saveWorld(source, worldName);
 
                     callback.callback(true, "");
                     this.cancel();
@@ -106,19 +116,21 @@ public class WorldsDirectoryManager {
     /**
      * Saves the specified world to the worlds directory.<br>
      * <b>This operation is very CPU heavy, only use on startup!</b>
-     * @see WorldsDirectoryManager#saveWorldAsync(String, AsyncWorldDirectoryCallback)
-     *      
+     * @see WorldsDirectoryManager#saveWorldAsync(File, String, AsyncWorldDirectoryCallback)
+     *
+     * @param source the entire path of the world directory
      * @param worldName the name of the world
      * @throws IOException if there is an error saving the world
      */
-    public void saveWorld(String worldName) throws IOException {
-        Path worldDirectory = new File(Bukkit.getWorldContainer(), worldName).toPath();
-        File saveDirectory = new File(worldsDirectory, worldName);
+    public void saveWorld(File source, String worldName) throws IOException {
+        Path worldDirectory = source.toPath();
+        File saveDirectory = new File(this.saveDirectory, worldName);
 
         //noinspection ResultOfMethodCallIgnored
         saveDirectory.mkdirs();
 
         copyDirectory(worldDirectory, saveDirectory.toPath(), worldName, path -> !path.getFileName().toString().endsWith(".lock"));
+        worldNames.add(worldName);
     }
 
     /**
@@ -157,8 +169,8 @@ public class WorldsDirectoryManager {
      * @throws IOException If an error occurs while removing the world.
      */
     public void removeWorld(String worldName) throws IOException {
-        File worldDirectory = new File(Bukkit.getWorldContainer(), worldName);
-        File saveDirectory = new File(worldsDirectory, worldName);
+        File worldDirectory = new File(activeDirectory, worldName);
+        File saveDirectory = new File(this.saveDirectory, worldName);
 
         if(worldDirectory.exists()) {
             FileUtils.deleteDirectory(worldDirectory);
@@ -218,8 +230,8 @@ public class WorldsDirectoryManager {
      * @throws IOException If an error occurs while loading the world.
      */
     public void loadWorld(String worldName) throws IOException {
-        File worldDirectory = new File(Bukkit.getWorldContainer(), worldName);
-        File saveDirectory = new File(worldsDirectory, worldName);
+        File worldDirectory = new File(activeDirectory, worldName);
+        File saveDirectory = new File(this.saveDirectory, worldName);
 
         if(!saveDirectory.exists()) {
             ConsoleLogger.error(String.format("The world %s could not be found!", worldName));
@@ -228,6 +240,34 @@ public class WorldsDirectoryManager {
 
         FileUtils.deleteDirectory(worldDirectory);
         copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), worldName, path -> true);
+    }
+
+    /**
+     * Unloads the specified world from the game and deletes its directory.
+     *
+     * @param worldName the name of the world to unload
+     */
+    public void unloadWorld(String worldName) {
+        World world = Bukkit.getWorld(worldName);
+        if(world != null) {
+            for(Player player : world.getPlayers()) {
+                player.kick(Chat.format("World closing", ChatColor.ERROR));
+            }
+        }
+
+        Bukkit.unloadWorld(worldName, false);
+
+        //The main world can't be deleted like this
+        if(Bukkit.getWorlds().get(0).getName().equals(worldName)) {
+           return;
+        }
+
+        File worldDirectory = new File(activeDirectory, worldName);
+        try {
+            FileUtils.deleteDirectory(worldDirectory);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -241,8 +281,8 @@ public class WorldsDirectoryManager {
         new BukkitRunnable() {
             @Override
             public void run() {
-                Path sourceWorldDirectory = new File(worldsDirectory, sourceWorldName).toPath();
-                File targetDirectory = new File(worldsDirectory, targetWorldName);
+                Path sourceWorldDirectory = new File(saveDirectory, sourceWorldName).toPath();
+                File targetDirectory = new File(saveDirectory, targetWorldName);
 
                 //noinspection ResultOfMethodCallIgnored
                 targetDirectory.mkdirs();
@@ -290,19 +330,21 @@ public class WorldsDirectoryManager {
      *
      * @param worldName        The name of the main world to be managed.
      * @param isNetherEnabled  A boolean indicating whether the Nether world should be enabled.
-     * @throws IOException     If an error occurs while saving the worlds.
      */
-    private void initializeMirage(String worldName, boolean isNetherEnabled) throws IOException {
-        String[] worldNames = new String[isNetherEnabled ? 3 : 2];
-        worldNames[0] = worldName;
-        worldNames[1] = String.format("%s_the_end", worldName);
+    private void initializeMirage(String worldName, boolean isNetherEnabled) {
+        HashSet<String> worldNames = new HashSet<>();
+        worldNames.add(worldName);
+        worldNames.add(String.format("%s_the_end", worldName));
 
-        if(isNetherEnabled) {
-            worldNames[2] = String.format("%s_nether", worldName);
+        if(isNetherEnabled)
+            worldNames.add(String.format("%s_nether", worldName));
+
+        this.worldNames.addAll(worldNames);
+
+        for(String world : worldNames) {
+            new WorldInitHandler(world, () ->
+                    saveWorld(new File(Bukkit.getWorldContainer(), world), world)
+            );
         }
-
-        this.worldNames.addAll(List.of(worldNames));
-
-        saveWorlds(worldNames);
     }
 }
