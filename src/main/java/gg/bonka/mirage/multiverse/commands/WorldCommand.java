@@ -4,6 +4,7 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import gg.bonka.mirage.Mirage;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
+import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
 import gg.bonka.mirage.misc.Chat;
 import gg.bonka.mirage.misc.ChatColor;
 import net.kyori.adventure.text.Component;
@@ -48,13 +49,16 @@ public class WorldCommand extends BaseCommand {
             return;
         }
 
+        new WorldInitHandler(worldName, () -> {
+            Component successMessage = Chat.format(String.format("Successfully created: %s, use /world go %s to check it out!", worldName, worldName), ChatColor.SUCCESS);
+
+            WorldsDirectoryManager.getInstance().saveWorldAsync(worldName, (success, message) ->
+                    handleWorldCreationCallback(player, success, message, successMessage)
+            );
+        });
+
         player.sendMessage(Chat.format(String.format("Creating: %s", worldName), ChatColor.INFO));
         Bukkit.createWorld(new WorldCreator(worldName));
-        Component successMessage = Chat.format(String.format("Successfully created: %s, use /world go %s to check it out!", worldName, worldName), ChatColor.SUCCESS);
-
-        WorldsDirectoryManager.getInstance().saveWorldAsync(worldName, (success, message) ->
-                handleWorldCreationCallback(player, success, message, successMessage)
-        );
     }
 
     @Subcommand("remove")
