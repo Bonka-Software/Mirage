@@ -5,6 +5,7 @@ import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
 import gg.bonka.mirage.misc.Chat;
 import gg.bonka.mirage.misc.ChatColor;
 import gg.bonka.mirage.misc.ConsoleLogger;
+import gg.bonka.mirage.world.MirageWorld;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -33,15 +34,15 @@ public class WorldsDirectoryManager {
 
     private static final File serverPath = Bukkit.getPluginsFolder().getParentFile();
 
+    private static final String relativeSaveDirectory = "mirage/saved-worlds";
+
+    private static final File activeDirectory = Bukkit.getWorldContainer();
+    private static final File saveDirectory = new File(serverPath, relativeSaveDirectory);
+
     @Getter
     private static WorldsDirectoryManager instance;
 
-    private final String relativeSaveDirectory = "mirage/saved-worlds";
-
-    private final File activeDirectory = Bukkit.getWorldContainer();
-    private final File saveDirectory = new File(serverPath, relativeSaveDirectory);
-
-    private final HashSet<String> worldNames = new HashSet<>();
+    private final HashSet<MirageWorld> worlds = new HashSet<>();
 
     /**
      * The WorldsDirectoryManager class is responsible for managing the worlds directory
@@ -66,45 +67,50 @@ public class WorldsDirectoryManager {
             return;
         }
 
-        File[] worlds = saveDirectory.listFiles((dir, name) -> dir.isDirectory());
+        File[] worldDirectories = saveDirectory.listFiles((dir, name) -> dir.isDirectory());
 
-        assert worlds != null;
-        worldNames.addAll(Arrays.stream(worlds).map(File::getName).collect(Collectors.toList()));
+        assert worldDirectories != null;
+        worlds.addAll(Arrays.stream(worldDirectories).map(file -> new MirageWorld(file.getName(), file)).collect(Collectors.toList()));
 
-        //TODO: Add the option to only load a world when requested in a config file!
-        loadWorlds(worldNames.toArray(new String[0]));
+        for(MirageWorld world : worlds) {
+            if(world.getLoadOnStart()) {
+                loadWorld(world);
+            }
+        }
     }
 
-    /**
-     * Saves the specified world asynchronously to the saved-worlds directory.
-     *
-     * @param worldName the name of the world
-     * @param callback  the callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
-     * @throws RuntimeException if an IOException occurs while saving the world
-     */
-    public void saveWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
-        saveWorldAsync(new File(activeDirectory, worldName), worldName, callback);
+    public static MirageWorld getMirageWorld(String name) {
+        return new MirageWorld(name, new File(saveDirectory, name));
     }
 
     /**
      * Saves the specified world asynchronously to the worlds directory.
      *
-     * @param source    the entire path of the world directory
-     * @param worldName the name of the world
-     * @param callback  the callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
-     * @throws RuntimeException if an IOException occurs while saving the world
+     * @param world    The MirageWorld object representing the world to be saved.
+     * @param callback The callback to be called after saving the world.
      */
-    private void saveWorldAsync(File source, String worldName, AsyncWorldDirectoryCallback callback) {
+    public void saveWorldAsync(MirageWorld world, AsyncWorldDirectoryCallback callback) {
+        saveWorldAsync(new File(activeDirectory, world.getWorldName()), world, callback);
+    }
+
+    /**
+     * Saves the specified world asynchronously to the worlds directory.
+     *
+     * @param source   The source directory where the world will be saved.
+     * @param world    The MirageWorld object representing the world to be saved.
+     * @param callback The callback to be called after saving the world. It receives a boolean indicating the success status and a message providing more information.
+     */
+    private void saveWorldAsync(File source, MirageWorld world, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
                 try {
-                    saveWorld(source, worldName);
+                    saveWorld(source, world);
 
                     callback.callback(true, "");
                     this.cancel();
                 } catch (IOException e) {
-                    callback.callback(false, String.format("Something went wrong while trying to save %s, the error stack trace has been printed to the console.", worldName));
+                    callback.callback(false, String.format("Something went wrong while trying to save %s, the error stack trace has been printed to the console.", world.getWorldName()));
                     this.cancel();
 
                     throw new RuntimeException(e);
@@ -114,43 +120,42 @@ public class WorldsDirectoryManager {
     }
 
     /**
-     * Saves the specified world to the worlds directory.<br>
-     * <b>This operation is very CPU heavy, only use on startup!</b>
-     * @see WorldsDirectoryManager#saveWorldAsync(File, String, AsyncWorldDirectoryCallback)
+     * Saves the specified world to the given source directory.
      *
-     * @param source the entire path of the world directory
-     * @param worldName the name of the world
-     * @throws IOException if there is an error saving the world
+     * @param source The source directory where the world will be saved.
+     * @param world The MirageWorld object representing the world to be saved.
+     * @throws IOException if an I/O error occurs while saving the world
      */
-    public void saveWorld(File source, String worldName) throws IOException {
+    public void saveWorld(File source, MirageWorld world) throws IOException {
         Path worldDirectory = source.toPath();
-        File saveDirectory = new File(this.saveDirectory, worldName);
 
         //noinspection ResultOfMethodCallIgnored
-        saveDirectory.mkdirs();
+        world.getSaveDirectory().mkdirs();
 
-        copyDirectory(worldDirectory, saveDirectory.toPath(), worldName, path -> !path.getFileName().toString().endsWith(".lock"));
-        worldNames.add(worldName);
+        copyDirectory(worldDirectory, world.getSaveDirectory().toPath(), world.getWorldName(), path -> !path.getFileName().toString().endsWith(".lock"));
+        world.save();
+
+        worlds.add(world);
     }
 
     /**
      * Asynchronously removes the specified world from the worlds directory.
      * This operation may not be executed in the main thread.
      *
-     * @param worldName The name of the world to be removed.
+     * @param world The name of the world to be removed.
      * @param callback  The callback to be called after removing the world. It receives a boolean indicating the success status and a message providing more information.
      */
-    public void removeWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
+    public void removeWorldAsync(MirageWorld world, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
                 try {
-                    removeWorld(worldName);
+                    removeWorld(world);
 
                     callback.callback(true, "");
                     this.cancel();
                 } catch (IOException e) {
-                    callback.callback(false, String.format("Something went wrong while trying to remove %s, the error stack trace has been printed to the console.", worldName));
+                    callback.callback(false, String.format("Something went wrong while trying to remove %s, the error stack trace has been printed to the console.", world.getWorldName()));
                     this.cancel();
 
                     throw new RuntimeException(e);
@@ -160,58 +165,47 @@ public class WorldsDirectoryManager {
     }
 
     /**
-     * Removes the specified world from the worlds directory. This method deletes the world directory and the save directory associated with the specified world.
+     * Removes the specified MirageWorld from the worlds directory.
+     * If the world directory exists, it will be deleted along with its save directory.
      * <br><br>
      * <b>This operation is very CPU heavy, only use on startup!</b>
-     * @see WorldsDirectoryManager#removeWorldAsync(String, AsyncWorldDirectoryCallback)
+     * @see WorldsDirectoryManager#removeWorldAsync(MirageWorld, AsyncWorldDirectoryCallback)
      *
-     * @param worldName The name of the world to remove.
-     * @throws IOException If an error occurs while removing the world.
+     * @param world The MirageWorld object representing the world to be removed.
+     * @throws IOException If an I/O error occurs while removing the world.
      */
-    public void removeWorld(String worldName) throws IOException {
-        File worldDirectory = new File(activeDirectory, worldName);
-        File saveDirectory = new File(this.saveDirectory, worldName);
+    public void removeWorld(MirageWorld world) throws IOException {
+        File worldDirectory = new File(activeDirectory, world.getWorldName());
 
         if(worldDirectory.exists()) {
             FileUtils.deleteDirectory(worldDirectory);
         }
 
-        if(saveDirectory.exists()) {
-            FileUtils.deleteDirectory(saveDirectory);
+        if(world.getSaveDirectory().exists()) {
+            FileUtils.deleteDirectory(world.getSaveDirectory());
         }
 
-        worldNames.remove(worldName);
+        worlds.remove(world);
     }
 
     /**
-     * Loads the specified worlds into the game.
+     * Asynchronously loads the specified world into the game.
      *
-     * @param worldNames The names of the worlds to load.
-     * @throws IOException If an error occurs while loading the worlds.
-     */
-    public void loadWorlds(String... worldNames) throws IOException {
-        for(String worldName : worldNames) {
-            loadWorld(worldName);
-        }
-    }
-
-    /**
-     * Loads the specified world asynchronously.
-     *
-     * @param worldName The name of the world to load.
+     * @param world    The MirageWorld object representing the world to load.
      * @param callback The callback to be called after loading the world. It receives a boolean indicating the success status and a message providing more information.
+     * @throws RuntimeException if an IOException occurs while trying to load the world
      */
-    public void loadWorldAsync(String worldName, AsyncWorldDirectoryCallback callback) {
+    public void loadWorldAsync(MirageWorld world, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
                 try {
-                    loadWorld(worldName);
+                    loadWorld(world);
 
                     callback.callback(true, "");
                     this.cancel();
                 } catch (IOException e) {
-                    callback.callback(false, String.format("Something went wrong while trying to load %s, the error stack trace has been printed to the console.", worldName));
+                    callback.callback(false, String.format("Something went wrong while trying to load %s, the error stack trace has been printed to the console.", world.getWorldName()));
                     this.cancel();
 
                     throw new RuntimeException(e);
@@ -224,22 +218,22 @@ public class WorldsDirectoryManager {
      * Loads the specified world into the game.
      * <br><br>
      * <b>This operation is very CPU heavy, only use on startup!</b>
-     * @see WorldsDirectoryManager#loadWorldAsync(String, AsyncWorldDirectoryCallback)
+     * @see WorldsDirectoryManager#loadWorldAsync(MirageWorld, AsyncWorldDirectoryCallback)
      *
-     * @param worldName The name of the world to load.
+     * @param world The name of the world to load.
      * @throws IOException If an error occurs while loading the world.
      */
-    public void loadWorld(String worldName) throws IOException {
-        File worldDirectory = new File(activeDirectory, worldName);
-        File saveDirectory = new File(this.saveDirectory, worldName);
+    public void loadWorld(MirageWorld world) throws IOException {
+        File worldDirectory = new File(activeDirectory, world.getWorldName());
+        File saveDirectory = world.getSaveDirectory();
 
         if(!saveDirectory.exists()) {
-            ConsoleLogger.error(String.format("The world %s could not be found!", worldName));
+            ConsoleLogger.error(String.format("The world %s could not be found!", world));
             return;
         }
 
         FileUtils.deleteDirectory(worldDirectory);
-        copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), worldName, path -> true);
+        copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), path -> true);
     }
 
     /**
@@ -271,30 +265,33 @@ public class WorldsDirectoryManager {
     }
 
     /**
-     * Copies a world from a source directory to a target directory asynchronously.
+     * Asynchronously copies a MirageWorld from a source world to a target world directory.
+     * <br><br>
+     * The operation is performed asynchronously using a separate thread.
+     * After the copy operation is completed, the provided callback is called to inform the caller about the success or failure of the operation.
      *
-     * @param sourceWorldName The name of the source world to be copied.
-     * @param targetWorldName The name of the target world where the copy will be saved.
-     * @param callback        The callback to be called after copying the world. It receives a boolean indicating the success status and a message providing more information.
+     * @param sourceWorld         The source MirageWorld object representing the world to be copied.
+     * @param targetWorldName     The name of the target world directory where the world will be copied.
+     * @param callback            The callback to be called after the copy operation. It receives a boolean indicating the success status and a message providing more information
+     * .
      */
-    public void copyWorldAsync(String sourceWorldName, String targetWorldName, AsyncWorldDirectoryCallback callback) {
+    public void copyWorldAsync(MirageWorld sourceWorld, String targetWorldName, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
-                Path sourceWorldDirectory = new File(saveDirectory, sourceWorldName).toPath();
                 File targetDirectory = new File(saveDirectory, targetWorldName);
 
                 //noinspection ResultOfMethodCallIgnored
                 targetDirectory.mkdirs();
 
                 try {
-                    copyDirectory(sourceWorldDirectory, targetDirectory.toPath(), targetWorldName, path -> !path.getFileName().toString().contains("uid.dat"));
-                    worldNames.add(targetWorldName);
+                    copyDirectory(sourceWorld.getSaveDirectory().toPath(), targetDirectory.toPath(), targetWorldName, path -> !path.getFileName().toString().contains("uid.dat"));
+                    worlds.add(new MirageWorld(targetWorldName, targetDirectory));
 
                     callback.callback(true, "");
                     this.cancel();
                 } catch (IOException e) {
-                    callback.callback(false, String.format("Something went wrong while copying world %s to %s, the error stack trace has been printed to the console.", sourceWorldName, targetWorldName));
+                    callback.callback(false, String.format("Something went wrong while copying world %s to %s, the error stack trace has been printed to the console.", sourceWorld, targetWorldName));
                     this.cancel();
 
                     throw new RuntimeException(e);
@@ -332,18 +329,18 @@ public class WorldsDirectoryManager {
      * @param isNetherEnabled  A boolean indicating whether the Nether world should be enabled.
      */
     private void initializeMirage(String worldName, boolean isNetherEnabled) {
-        HashSet<String> worldNames = new HashSet<>();
-        worldNames.add(worldName);
-        worldNames.add(String.format("%s_the_end", worldName));
+        HashSet<MirageWorld> worldNames = new HashSet<>();
+        worldNames.add(getMirageWorld(worldName));
+        worldNames.add(getMirageWorld(String.format("%s_the_end", worldName)));
 
         if(isNetherEnabled)
-            worldNames.add(String.format("%s_nether", worldName));
+            worldNames.add(getMirageWorld(String.format("%s_nether", worldName)));
 
-        this.worldNames.addAll(worldNames);
+        this.worlds.addAll(worldNames);
 
-        for(String world : worldNames) {
-            new WorldInitHandler(world, () ->
-                    saveWorld(new File(Bukkit.getWorldContainer(), world), world)
+        for(MirageWorld world : worldNames) {
+            new WorldInitHandler(world.getWorldName(), () ->
+                    saveWorld(new File(Bukkit.getWorldContainer(), world.getWorldName()), world)
             );
         }
     }

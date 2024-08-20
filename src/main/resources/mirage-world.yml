@@ -1,0 +1,3 @@
+persistent: false
+load-on-start: true
+keep-in-memory: false
