@@ -1,3 +1,15 @@
+# Persistent worlds don't get saved/loaded besides this mirage-world yml
+# In other words, persistent don't make use of mirage's reset functions.
 persistent: false
+
+# Saves the modified world to a .zip in mirage/back-ups/<world name>
+# This back-up will ALWAYS happen when the world gets unloaded by Mirage...
+# So be very careful, especially with large worlds.
+save-changes-to-backup: false
+
+# Loading on start will put the world in the main server directory when the server gets started.
 load-on-start: true
+
+# Keep in memory ensures that this world is always loaded in memory. This makes traveling to that world extremely fast.
+# But having a lot of worlds always loaded requires a lot of RAM.
 keep-in-memory: false

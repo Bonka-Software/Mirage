@@ -4,6 +4,7 @@ import gg.bonka.mirage.configuration.CustomConfig;
 import lombok.Getter;
 
 import java.io.File;
+import java.io.IOException;
 
 public class MirageWorld {
 
@@ -15,6 +16,7 @@ public class MirageWorld {
     private CustomConfig config;
 
     private Boolean persistent;
+    private Boolean backup;
     private Boolean loadOnStart;
     private Boolean keepInMemory;
 
@@ -25,18 +27,41 @@ public class MirageWorld {
 
     public void save() {
         getConfig();
+
+        config.put("persistent", getPersistent());
+        config.put("backup", getBackup());
+        config.put("load-on-start", getLoadOnStart());
+        config.put("keep-in-memory", getKeepInMemory());
+
+        try {
+            config.save();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private CustomConfig getConfig() {
-        if(config == null) {
-            config = new CustomConfig(saveDirectory, "mirage-world.yml");
-        }
+    public void setPersistent(boolean persistent) {
+        this.persistent = persistent;
+    }
 
-        return config;
+    public void setBackup(boolean backup) {
+        this.backup = backup;
+    }
+
+    public void setLoadOnStart(boolean loadOnStart) {
+        this.loadOnStart = loadOnStart;
+    }
+
+    public void setKeepInMemory(boolean keepInMemory) {
+        this.keepInMemory = keepInMemory;
     }
 
     public boolean getPersistent() {
         return getBoolean(persistent,"persistent");
+    }
+
+    public boolean getBackup() {
+        return getBoolean(backup,"save-changes-to-backup");
     }
 
     public boolean getLoadOnStart() {
@@ -45,6 +70,14 @@ public class MirageWorld {
 
     public boolean getKeepInMemory() {
         return getBoolean(keepInMemory, "keep-in-memory");
+    }
+
+    private CustomConfig getConfig() {
+        if(config == null) {
+            config = new CustomConfig(saveDirectory, "mirage-world.yml");
+        }
+
+        return config;
     }
 
     private boolean getBoolean(Boolean bool, String key) {

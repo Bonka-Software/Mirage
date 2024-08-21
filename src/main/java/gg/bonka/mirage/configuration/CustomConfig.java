@@ -8,11 +8,17 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 
+/**
+ * The CustomConfig class represents a configuration file for Mirage.
+ *
+ * @see "Credits to: <a href="https://github.com/Casb02"> Casb02</a>
+ * who came up with this class and wrote it for another Bonka project.
+ * This version is modified."
+ */
 public class CustomConfig {
 
+    private final File configFile;
     private final FileConfiguration config;
 
     /**
@@ -22,28 +28,22 @@ public class CustomConfig {
      * @param fileName the name of the config file
      */
     public CustomConfig(File directory, String fileName) {
-        File configFile = new File(directory, fileName);
-        if (!configFile.exists()) {
-            InputStream stream = Mirage.getInstance().getResource(fileName);
-
-            if(stream == null) {
-                throw new RuntimeException(String.format("No resource found with name: %s", fileName));
-            }
-
-            try {
-                //noinspection ResultOfMethodCallIgnored
-                configFile.createNewFile();
-                Files.copy(stream, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
+        configFile = new File(directory, fileName);
         config = new YamlConfiguration();
+
         try {
-            config.load(configFile);
+            if(!configFile.exists()) {
+                InputStream stream = Mirage.getInstance().getResource(fileName);
+
+                if(stream == null)
+                    throw new RuntimeException(String.format("No resource found with name: %s", fileName));
+
+                config.loadFromString(new String(stream.readAllBytes()));
+            } else {
+                config.load(configFile);
+            }
         } catch (IOException | org.bukkit.configuration.InvalidConfigurationException e) {
-            ConsoleLogger.error(String.format("Failed to load config file: %s", fileName));
+            ConsoleLogger.error(String.format("Failed to load config file: %s error: %s", fileName, e));
         }
     }
 
@@ -55,5 +55,28 @@ public class CustomConfig {
      */
     public String getStringKey(String key) {
         return config.getString(key);
+    }
+
+    /**
+     * Sets the value of a specific key in the configuration.
+     *
+     * @param key the key to set
+     * @param value the value to assign to the key
+     */
+    public void put(String key, Object value) {
+        config.set(key, value);
+    }
+
+    /**
+     * Saves the current configuration to a file.
+     *
+     * @throws IOException if an I/O error occurs while saving the configuration
+     */
+    public void save() throws IOException {
+        if(!configFile.exists())
+            //noinspection ResultOfMethodCallIgnored
+            configFile.createNewFile();
+
+        config.save(configFile);
     }
 }

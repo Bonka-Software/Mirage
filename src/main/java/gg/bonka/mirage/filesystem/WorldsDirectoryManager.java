@@ -132,9 +132,10 @@ public class WorldsDirectoryManager {
         //noinspection ResultOfMethodCallIgnored
         world.getSaveDirectory().mkdirs();
 
-        copyDirectory(worldDirectory, world.getSaveDirectory().toPath(), world.getWorldName(), path -> !path.getFileName().toString().endsWith(".lock"));
-        world.save();
+        if(!world.getPersistent())
+            copyDirectory(worldDirectory, world.getSaveDirectory().toPath(), world.getWorldName(), path -> !path.getFileName().toString().endsWith(".lock"));
 
+        world.save();
         worlds.add(world);
     }
 
@@ -227,6 +228,13 @@ public class WorldsDirectoryManager {
         File worldDirectory = new File(activeDirectory, world.getWorldName());
         File saveDirectory = world.getSaveDirectory();
 
+        if(world.getPersistent()) {
+            if(!worldDirectory.exists())
+                copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), path -> true);
+
+            return;
+        }
+
         if(!saveDirectory.exists()) {
             ConsoleLogger.error(String.format("The world %s could not be found!", world));
             return;
@@ -243,18 +251,20 @@ public class WorldsDirectoryManager {
      */
     public void unloadWorld(String worldName) {
         World world = Bukkit.getWorld(worldName);
+        boolean isPersistent = getMirageWorld(worldName).getPersistent();
+
         if(world != null) {
             for(Player player : world.getPlayers()) {
                 player.kick(Chat.format("World closing", ChatColor.ERROR));
             }
         }
 
-        Bukkit.unloadWorld(worldName, false);
+        Bukkit.unloadWorld(worldName, isPersistent);
 
         //The main world can't be deleted like this
-        if(Bukkit.getWorlds().get(0).getName().equals(worldName)) {
+        //We also don't ever delete persistent worlds, for quite obvious reasons.
+        if(Bukkit.getWorlds().get(0).getName().equals(worldName) || isPersistent)
            return;
-        }
 
         File worldDirectory = new File(activeDirectory, worldName);
         try {
@@ -275,7 +285,7 @@ public class WorldsDirectoryManager {
      * @param callback            The callback to be called after the copy operation. It receives a boolean indicating the success status and a message providing more information
      * .
      */
-    public void copyWorldAsync(MirageWorld sourceWorld, String targetWorldName, AsyncWorldDirectoryCallback callback) {
+    public void copyWorldAsync(MirageWorld sourceWorld, String targetWorldName, boolean isPersistent, AsyncWorldDirectoryCallback callback) {
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -286,7 +296,12 @@ public class WorldsDirectoryManager {
 
                 try {
                     copyDirectory(sourceWorld.getSaveDirectory().toPath(), targetDirectory.toPath(), targetWorldName, path -> !path.getFileName().toString().contains("uid.dat"));
-                    worlds.add(new MirageWorld(targetWorldName, targetDirectory));
+
+                    MirageWorld world = new MirageWorld(targetWorldName, targetDirectory);
+                    world.setPersistent(isPersistent);
+                    world.save();
+
+                    worlds.add(world);
 
                     callback.callback(true, "");
                     this.cancel();

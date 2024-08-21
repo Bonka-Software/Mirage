@@ -33,12 +33,21 @@ public class WorldCommand extends BaseCommand {
     }
 
     @Subcommand("create")
-    @CommandCompletion("@nothing @world")
+    @CommandCompletion("@nothing @range:1 @world")
     @Description("Creates the given world")
     @CommandPermission("mirage.command.world.create")
-    public void create(Player player, @Single String worldName, @Optional String copyFromWorldName) {
+    public void create(Player player, @Single String worldName, @Single String persistent, @Optional String copyFromWorldName) {
         if(WorldsDirectoryManager.getInstance().getWorlds().stream().anyMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s already exists!", worldName), ChatColor.ERROR));
+            return;
+        }
+
+        boolean isPersistent;
+
+        try {
+            isPersistent = Integer.parseInt(persistent) > 0;
+        } catch (NumberFormatException e) {
+            player.sendMessage(Chat.format(String.format("Invalid value for isPersistent: %s, should either be 0 or 1", persistent), ChatColor.ERROR));
             return;
         }
 
@@ -46,7 +55,7 @@ public class WorldCommand extends BaseCommand {
             Component successMessage = Chat.format(String.format("Successfully copied: %s to %s world, use /world go %s to check it out!", copyFromWorldName, worldName, worldName), ChatColor.SUCCESS);
 
             MirageWorld copyFormWorld = WorldsDirectoryManager.getMirageWorld(copyFromWorldName);
-            WorldsDirectoryManager.getInstance().copyWorldAsync(copyFormWorld, worldName, (success, message) ->
+            WorldsDirectoryManager.getInstance().copyWorldAsync(copyFormWorld, worldName, isPersistent, (success, message) ->
                     handleWorldCreationCallback(player, success, message, successMessage)
             );
 
@@ -57,7 +66,10 @@ public class WorldCommand extends BaseCommand {
         new WorldInitHandler(worldName, () -> {
             Component successMessage = Chat.format(String.format("Successfully created: %s, use /world go %s to check it out!", worldName, worldName), ChatColor.SUCCESS);
 
-            WorldsDirectoryManager.getInstance().saveWorldAsync(WorldsDirectoryManager.getMirageWorld(worldName), (success, message) ->
+            MirageWorld world = WorldsDirectoryManager.getMirageWorld(worldName);
+            world.setPersistent(isPersistent);
+
+            WorldsDirectoryManager.getInstance().saveWorldAsync(world, (success, message) ->
                     handleWorldCreationCallback(player, success, message, successMessage)
             );
         });
@@ -83,10 +95,10 @@ public class WorldCommand extends BaseCommand {
             return;
         }
 
-        int showMessageBoolean;
+        boolean showMessageBoolean;
 
         try {
-            showMessageBoolean = Integer.parseInt(showMessage);
+            showMessageBoolean = Integer.parseInt(showMessage) > 0;
         } catch (NumberFormatException e) {
             player.sendMessage(Chat.format(String.format("Invalid value for showMessage: %s, should either be 0 or 1", showMessage), ChatColor.ERROR));
             return;
@@ -102,7 +114,7 @@ public class WorldCommand extends BaseCommand {
                 if(destination != null) {
                     p.teleport(destination.getSpawnLocation());
 
-                    if(showMessageBoolean > 0)
+                    if(showMessageBoolean)
                         p.sendMessage(Chat.format(String.format("The world %s is being removed!", worldName), ChatColor.ERROR));
                 }
             }
