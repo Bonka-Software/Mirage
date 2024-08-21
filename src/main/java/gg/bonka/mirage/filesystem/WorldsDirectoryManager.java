@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -78,7 +77,7 @@ public class WorldsDirectoryManager {
         File[] worldDirectories = saveDirectory.listFiles((dir, name) -> dir.isDirectory());
 
         assert worldDirectories != null;
-        worlds.addAll(Arrays.stream(worldDirectories).map(file -> new MirageWorld(file.getName(), file)).collect(Collectors.toList()));
+        worlds.addAll(Arrays.stream(worldDirectories).map(file -> new MirageWorld(file.getName(), file)).toList());
 
         for(MirageWorld world : worlds) {
             if(world.getLoadOnStart()) {
@@ -256,7 +255,6 @@ public class WorldsDirectoryManager {
             return;
         }
 
-        FileUtils.deleteDirectory(worldDirectory);
         copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), this::loadWorldToActiveDirectoryPredicate);
     }
 
@@ -393,6 +391,8 @@ public class WorldsDirectoryManager {
      * @throws IOException if an I/O error occurs during the copy process
      */
     private void copyDirectory(Path source, Path saveDirectory, String worldName, Predicate<Path> predicate) throws IOException {
+        FileUtils.deleteDirectory(saveDirectory.toFile());
+
         try(Stream<Path> stream = Files.walk(source)) {
             stream.filter(predicate).forEach(path -> {
                 try {

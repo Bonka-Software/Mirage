@@ -1,4 +1,4 @@
-package gg.bonka.mirage.multiverse.commands;
+package gg.bonka.mirage.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
@@ -7,6 +7,7 @@ import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
 import gg.bonka.mirage.misc.Chat;
 import gg.bonka.mirage.misc.ChatColor;
+import gg.bonka.mirage.misc.ConfirmationScreen;
 import gg.bonka.mirage.world.MirageWorld;
 import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.text.Component;
@@ -21,6 +22,7 @@ import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @CommandAlias("world")
@@ -172,6 +174,37 @@ public class WorldCommand extends BaseCommand {
         }
 
         player.teleport(world.getSpawnLocation());
+    }
+
+    @Subcommand("save")
+    @CommandCompletion("@world")
+    @Description("Saves the world")
+    @CommandPermission("mirage.command.world.save")
+    public void save(Player player, @Single String worldName) {
+        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+            player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
+            return;
+        }
+
+        MirageWorld world = WorldsDirectoryManager.getMirageWorld(worldName);
+        new ConfirmationScreen(player, String.format("Saving %s will override the current save, are you sure?", worldName), confirmed -> handleSaveCallback(player, world, confirmed));
+    }
+
+    private void handleSaveCallback(Player player, MirageWorld world, boolean confirmed) {
+        if(!confirmed) {
+            player.sendMessage(Chat.format("Canceled world save!", ChatColor.ERROR));
+            return;
+        }
+
+        player.sendMessage(Chat.format("Saving world...", ChatColor.SUCCESS));
+        Objects.requireNonNull(Bukkit.getWorld(world.getWorldName())).save();
+
+        WorldsDirectoryManager.getInstance().saveWorldAsync(world, (success, message) -> {
+            if(success)
+                player.sendMessage(Chat.format(String.format("%s was saved!", world.getWorldName()), ChatColor.SUCCESS));
+            else
+                player.sendMessage(Chat.format(message, ChatColor.ERROR));
+        });
     }
 
     @Subcommand("settings")

@@ -3,7 +3,7 @@ package gg.bonka.mirage;
 import co.aikar.commands.PaperCommandManager;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
-import gg.bonka.mirage.multiverse.commands.WorldCommand;
+import gg.bonka.mirage.commands.WorldCommand;
 import gg.bonka.mirage.world.MirageWorld;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
