@@ -8,7 +8,13 @@ import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
 import gg.bonka.mirage.misc.Chat;
 import gg.bonka.mirage.misc.ChatColor;
 import gg.bonka.mirage.world.MirageWorld;
+import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -166,6 +172,66 @@ public class WorldCommand extends BaseCommand {
         }
 
         player.teleport(world.getSpawnLocation());
+    }
+
+    @Subcommand("settings")
+    @CommandCompletion("@world")
+    @Description("Opens the world settings GUI")
+    @CommandPermission("mirage.command.world.settings")
+    public void settings(Player player, @Single String worldName) {
+        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+            player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
+            return;
+        }
+
+        openSettingsScreen(player, WorldsDirectoryManager.getMirageWorld(worldName));
+    }
+
+    private void openSettingsScreen(Player player, MirageWorld world) {
+        TagResolver persistentTag = Placeholder.styling("persistent", getColor(world.getPersistent()), ClickEvent.callback(audience -> {
+            world.setPersistent(!world.getPersistent());
+            refreshSettingsScreen(player, world);
+        }));
+
+        TagResolver backupTag = Placeholder.styling("backup", getColor(world.getBackup()), ClickEvent.callback(audience -> {
+            world.setBackup(!world.getBackup());
+            refreshSettingsScreen(player, world);
+        }));
+
+        TagResolver loadOnStartTag = Placeholder.styling("loadonstart", getColor(world.getLoadOnStart()), ClickEvent.callback(audience -> {
+            world.setLoadOnStart(!world.getLoadOnStart());
+            refreshSettingsScreen(player, world);
+        }));
+
+        TagResolver keepInMemoryTag = Placeholder.styling("keepinmemory", getColor(world.getKeepInMemory()), ClickEvent.callback(audience -> {
+            world.setKeepInMemory(!world.getKeepInMemory());
+            refreshSettingsScreen(player, world);
+        }));
+
+        String persistentText = String.format("<persistent>[%s]</persistent>", world.getPersistent());
+        String backupText = String.format("<backup>[%s]</backup><newline>", world.getBackup());
+        String loadOnStartText = String.format("<loadonstart>[%s]</loadonstart>", world.getLoadOnStart());
+        String keepInMemoryText = String.format("<keepinmemory>[%s]</keepinmemory>", world.getKeepInMemory());
+
+        Component content = MiniMessage.miniMessage().deserialize(String.format(
+                                "Persistent world: %s<br><br>" +
+                                "Backup world after unload: %s<br><br>" +
+                                "Load on start: %s<br><br>" +
+                                "Keep in memory: %s",
+                        persistentText, backupText, loadOnStartText, keepInMemoryText),
+                persistentTag, backupTag, loadOnStartTag, keepInMemoryTag);
+
+        Book book = Book.book(Component.text("World settings"), Component.text("Server"), content);
+        player.openBook(book);
+    }
+
+    private void refreshSettingsScreen(Player player, MirageWorld world) {
+        world.save();
+        openSettingsScreen(player, world);
+    }
+
+    private TextColor getColor(boolean value) {
+        return value ? ChatColor.SUCCESS.getTextColor() : ChatColor.ERROR.getTextColor();
     }
 
     /**
