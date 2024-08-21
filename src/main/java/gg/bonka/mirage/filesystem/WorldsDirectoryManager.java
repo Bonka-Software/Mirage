@@ -9,6 +9,7 @@ import gg.bonka.mirage.world.MirageWorld;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.codehaus.plexus.util.FileUtils;
@@ -77,6 +78,14 @@ public class WorldsDirectoryManager {
                 loadWorld(world);
             }
         }
+
+        //We can only load worlds when we're in the POST-WORLD stage of the Bukkit startup sequence
+        new WorldInitHandler(worldName, () -> {
+           for(MirageWorld world : worlds) {
+               if(world.getKeepInMemory())
+                   Bukkit.createWorld(WorldCreator.name(world.getWorldName()));
+           }
+        });
     }
 
     public static MirageWorld getMirageWorld(String name) {
