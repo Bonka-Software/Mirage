@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 @Getter
 public class WorldsDirectoryManager {
 
+    private static final String worldFileName = "mirage-world.yml";
     private static final File serverPath = Bukkit.getPluginsFolder().getParentFile();
 
     private static final String relativeSaveDirectory = "mirage/saved-worlds";
@@ -245,7 +246,7 @@ public class WorldsDirectoryManager {
 
         if(world.getPersistent()) {
             if(!worldDirectory.exists())
-                copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), path -> true);
+                copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), this::loadWorldToActiveDirectoryPredicate);
 
             return;
         }
@@ -256,7 +257,11 @@ public class WorldsDirectoryManager {
         }
 
         FileUtils.deleteDirectory(worldDirectory);
-        copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), path -> true);
+        copyDirectory(saveDirectory.toPath(), worldDirectory.toPath(), world.getWorldName(), this::loadWorldToActiveDirectoryPredicate);
+    }
+
+    private boolean loadWorldToActiveDirectoryPredicate(Path path) {
+        return !path.getFileName().toString().endsWith(worldFileName);
     }
 
     /**
@@ -356,7 +361,9 @@ public class WorldsDirectoryManager {
                 targetDirectory.mkdirs();
 
                 try {
-                    copyDirectory(sourceWorld.getSaveDirectory().toPath(), targetDirectory.toPath(), targetWorldName, path -> !path.getFileName().toString().contains("uid.dat"));
+                    copyDirectory(sourceWorld.getSaveDirectory().toPath(), targetDirectory.toPath(), targetWorldName, path ->
+                            loadWorldToActiveDirectoryPredicate(path) && !path.getFileName().toString().contains("uid.dat")
+                    );
 
                     MirageWorld world = new MirageWorld(targetWorldName, targetDirectory);
                     world.setPersistent(isPersistent);
