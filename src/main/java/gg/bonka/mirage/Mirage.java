@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.multiverse.commands.WorldCommand;
+import gg.bonka.mirage.world.MirageWorld;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -44,8 +45,12 @@ public final class Mirage extends JavaPlugin {
     public void onDisable() {
         //Speeds up the server shutdown a lot!
         //Bukkit will automatically save the worlds by default, but we obviously don't want that!
-        for(String world : WorldsDirectoryManager.getInstance().getWorldNames()) {
-            WorldsDirectoryManager.getInstance().unloadWorld(world);
+        for(MirageWorld world : WorldsDirectoryManager.getInstance().getWorlds()) {
+            try {
+                WorldsDirectoryManager.getInstance().unloadWorld(world.getWorldName());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
