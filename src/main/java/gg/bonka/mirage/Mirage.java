@@ -46,7 +46,11 @@ public final class Mirage extends JavaPlugin {
         //Speeds up the server shutdown a lot!
         //Bukkit will automatically save the worlds by default, but we obviously don't want that!
         for(MirageWorld world : WorldsDirectoryManager.getInstance().getWorlds()) {
-            WorldsDirectoryManager.getInstance().unloadWorld(world.getWorldName());
+            try {
+                WorldsDirectoryManager.getInstance().unloadWorld(world.getWorldName());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

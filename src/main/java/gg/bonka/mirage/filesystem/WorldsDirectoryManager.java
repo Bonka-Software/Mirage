@@ -13,12 +13,16 @@ import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.codehaus.plexus.util.FileUtils;
+import org.zeroturnaround.zip.ZipUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -36,9 +40,11 @@ public class WorldsDirectoryManager {
     private static final File serverPath = Bukkit.getPluginsFolder().getParentFile();
 
     private static final String relativeSaveDirectory = "mirage/saved-worlds";
+    private static final String relativeBackupDirectory = "mirage/back-ups";
 
     private static final File activeDirectory = Bukkit.getWorldContainer();
     private static final File saveDirectory = new File(serverPath, relativeSaveDirectory);
+    private static final File backupDirectory = new File(serverPath, relativeBackupDirectory);
 
     @Getter
     private static WorldsDirectoryManager instance;
@@ -258,9 +264,9 @@ public class WorldsDirectoryManager {
      *
      * @param worldName the name of the world to unload
      */
-    public void unloadWorld(String worldName) {
+    public void unloadWorld(String worldName) throws IOException {
         World world = Bukkit.getWorld(worldName);
-        boolean isPersistent = getMirageWorld(worldName).getPersistent();
+        MirageWorld mirageWorld = getMirageWorld(worldName);
 
         if(world != null) {
             for(Player player : world.getPlayers()) {
@@ -268,19 +274,65 @@ public class WorldsDirectoryManager {
             }
         }
 
-        Bukkit.unloadWorld(worldName, isPersistent);
+        Bukkit.unloadWorld(worldName, mirageWorld.getPersistent());
+
+        if(mirageWorld.getBackup()) {
+            backup(mirageWorld);
+        }
 
         //The main world can't be deleted like this
         //We also don't ever delete persistent worlds, for quite obvious reasons.
-        if(Bukkit.getWorlds().get(0).getName().equals(worldName) || isPersistent)
+        if(Bukkit.getWorlds().get(0).getName().equals(worldName) || mirageWorld.getPersistent())
            return;
 
         File worldDirectory = new File(activeDirectory, worldName);
-        try {
-            FileUtils.deleteDirectory(worldDirectory);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        FileUtils.deleteDirectory(worldDirectory);
+    }
+
+    /**
+     * Backs up a MirageWorld asynchronously. Creates a backup file in the backup directory with the current timestamp.
+     *
+     * @param world    The MirageWorld object representing the world to be backed up.
+     * @param callback The callback to be called after backing up the world. It receives a boolean
+     *                 indicating the success status and a message providing more information.
+     */
+    public void backupAsync(MirageWorld world, AsyncWorldDirectoryCallback callback) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    backup(world);
+                    callback.callback(true, "");
+                } catch (IOException e) {
+                    callback.callback(false, String.format("Something went wrong while trying to backup %s", world.getWorldName()));
+                    throw new RuntimeException(e);
+                }
+            }
+        }.runTaskAsynchronously(Mirage.getInstance());
+    }
+
+    /**
+     * Backs up a MirageWorld. Creates a backup file in the backup directory with the current timestamp.
+     * <br><br>
+     * <b>This operation is very CPU heavy, only use on startup!</b>
+     * @see WorldsDirectoryManager#backupAsync(MirageWorld, AsyncWorldDirectoryCallback)
+     *
+     * @param world The MirageWorld object representing the world to be backed up.
+     * @throws IOException if an I/O error occurs while backing up the world.
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void backup(MirageWorld world) throws IOException {
+        Instant instant = Instant.ofEpochMilli(System.currentTimeMillis());
+        String dateString = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss")
+                .withZone(ZoneId.systemDefault())
+                .format(instant);
+
+        File backupDir = new File(backupDirectory, world.getWorldName());
+        File backupFile = new File(backupDir, String.format("%s_%s.zip", world.getWorldName(), dateString));
+
+        backupDir.mkdirs();
+        backupFile.createNewFile();
+        ZipUtil.pack(new File(activeDirectory, world.getWorldName()), backupFile);
     }
 
     /**

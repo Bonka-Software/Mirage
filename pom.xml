@@ -106,5 +106,12 @@
           <artifactId>acf-paper</artifactId>
           <version>0.5.1-SNAPSHOT</version>
       </dependency>
+
+      <dependency>
+          <groupId>org.zeroturnaround</groupId>
+          <artifactId>zt-zip</artifactId>
+          <version>1.17</version>
+          <type>jar</type>
+      </dependency>
   </dependencies>
 </project>

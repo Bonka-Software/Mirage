@@ -29,7 +29,7 @@ public class MirageWorld {
         getConfig();
 
         config.put("persistent", getPersistent());
-        config.put("backup", getBackup());
+        config.put("save-changes-to-backup", getBackup());
         config.put("load-on-start", getLoadOnStart());
         config.put("keep-in-memory", getKeepInMemory());
 
