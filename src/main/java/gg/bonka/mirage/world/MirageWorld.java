@@ -19,6 +19,7 @@ public class MirageWorld {
     private Boolean backup;
     private Boolean loadOnStart;
     private Boolean keepInMemory;
+    private Boolean useRollback;
 
     public MirageWorld(String worldName, File saveDirectory) {
         this.worldName = worldName;
@@ -32,6 +33,7 @@ public class MirageWorld {
         config.put("save-changes-to-backup", getBackup());
         config.put("load-on-start", getLoadOnStart());
         config.put("keep-in-memory", getKeepInMemory());
+        config.put("use-rollback", getUseRollback());
 
         try {
             config.save();
@@ -56,6 +58,10 @@ public class MirageWorld {
         this.keepInMemory = keepInMemory;
     }
 
+    public void setUseRollback(boolean useRollback) {
+        this.useRollback = useRollback;
+    }
+
     public boolean getPersistent() {
         return getBoolean(persistent,"persistent");
     }
@@ -70,6 +76,10 @@ public class MirageWorld {
 
     public boolean getKeepInMemory() {
         return getBoolean(keepInMemory, "keep-in-memory");
+    }
+
+    public boolean getUseRollback() {
+        return getBoolean(useRollback, "use-rollback");
     }
 
     private CustomConfig getConfig() {
