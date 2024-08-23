@@ -13,3 +13,7 @@ load-on-start: true
 # Keep in memory ensures that this world is always loaded in memory. This makes traveling to that world extremely fast.
 # But having a lot of worlds always loaded requires a lot of RAM.
 keep-in-memory: false
+
+# Rollback allows you to roll back the world in real time.
+# This will roughly double the RAM usage of your world.
+use-rollback: true

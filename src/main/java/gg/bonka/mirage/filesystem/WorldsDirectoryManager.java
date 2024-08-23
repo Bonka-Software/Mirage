@@ -56,9 +56,8 @@ public class WorldsDirectoryManager {
      * and saving worlds to that directory.
      */
     public WorldsDirectoryManager() throws IOException {
-        if(instance != null) {
+        if(instance != null)
             throw new IllegalStateException("Singleton WorldsDirectoryManager has already been initialized");
-        }
 
         instance = this;
 
@@ -80,9 +79,8 @@ public class WorldsDirectoryManager {
         worlds.addAll(Arrays.stream(worldDirectories).map(file -> new MirageWorld(file.getName(), file)).toList());
 
         for(MirageWorld world : worlds) {
-            if(world.getLoadOnStart()) {
+            if(world.getLoadOnStart())
                 loadWorld(world);
-            }
         }
 
         //We can only load worlds when we're in the POST-WORLD stage of the Bukkit startup sequence
@@ -390,7 +388,7 @@ public class WorldsDirectoryManager {
      * @param predicate     a predicate used to filter the files to be copied
      * @throws IOException if an I/O error occurs during the copy process
      */
-    private void copyDirectory(Path source, Path saveDirectory, String worldName, Predicate<Path> predicate) throws IOException {
+    public void copyDirectory(Path source, Path saveDirectory, String worldName, Predicate<Path> predicate) throws IOException {
         FileUtils.deleteDirectory(saveDirectory.toFile());
 
         try(Stream<Path> stream = Files.walk(source)) {

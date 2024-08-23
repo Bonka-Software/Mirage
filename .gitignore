@@ -115,3 +115,6 @@ server/*
 
 !server/server-icon.png
 !server/README.md
+
+# NMS https://github.com/Alvinn8/paper-nms-maven-plugin
+.paper-nms

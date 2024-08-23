@@ -18,6 +18,13 @@
     </properties>
     <url>https://bonka.gg/</url>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>bytecode.space</id>
+            <url>https://repo.bytecode.space/repository/maven-public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <build>
     <plugins>
       <plugin>
@@ -60,6 +67,19 @@
               <goal>shade</goal>
             </goals>
           </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>ca.bkaw</groupId>
+        <artifactId>paper-nms-maven-plugin</artifactId>
+        <version>1.4.4</version>
+        <executions>
+          <execution>
+           <phase>process-classes</phase>
+           <goals>
+             <goal>remap</goal>
+           </goals>
+        </execution>
         </executions>
       </plugin>
     </plugins>
@@ -112,6 +132,13 @@
           <artifactId>zt-zip</artifactId>
           <version>1.17</version>
           <type>jar</type>
+      </dependency>
+
+      <dependency>
+          <groupId>ca.bkaw</groupId>
+          <artifactId>paper-nms</artifactId>
+          <version>1.20.1-SNAPSHOT</version>
+          <scope>provided</scope>
       </dependency>
   </dependencies>
 </project>
