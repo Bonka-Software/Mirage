@@ -42,6 +42,9 @@ The very first official version of Mirage contains:
 Mirage uses 2 singletons from where you can easily save, load, backup and rollback mirage worlds!
 These singletons are `WorldsDirectoryManager` and `WorldsTracker`.
 
+Also, don't forget to add mirage as a dependency in you `plugin.yml`:<br>
+`depend: [Mirage]` or `softdepend: [Mirage]`
+
 ### WorldsDirectoryManager
 
 The worlds directory manager is what makes Mirage tick.
