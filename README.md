@@ -4,6 +4,8 @@ Custom map loading system for minecraft servers.
 It's able to reset maps to their saved state on server startup and during runtime.
 The world tracking system also allows for runtime rollbacks without kicking players.
 
+![WorldReset-optimize](https://github.com/user-attachments/assets/35efe830-a17c-4dc8-9181-56f070bf9401)
+
 ---
 
 #### Version 1.0.0
@@ -12,6 +14,8 @@ The very first official version of Mirage contains:
 - Backup system
 - Rollbacks
 - Per world (in-game) configurability
+
+![WorldSave](https://github.com/user-attachments/assets/bf5177c4-435f-4ced-88e5-f7dd992fc19c)
 
 ---
 
