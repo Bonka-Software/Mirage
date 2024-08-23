@@ -1,7 +1,5 @@
 # Mirage
 
-[![](https://jitpack.io/v/Bonka-Software/Mirage.svg)](https://jitpack.io/#Bonka-Software/Mirage)
-
 Custom map loading system for minecraft servers.
 It's able to reset maps to their saved state on server startup and during runtime.
 The world tracking system also allows for runtime rollbacks without kicking players.
@@ -19,19 +17,18 @@ The very first official version of Mirage contains:
 
 ## Maven
 
-```
-<repositories>
-    <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
+```xml
+<repository>
+    <id>bonka</id>
+    <url>https://nexus.bonka.gg/repository/maven-public/</url>
 </repository>
 ```
 
-```
+```xml
 <dependency>
-    <groupId>com.github.Bonka-Software</groupId>
+    <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>v1.0.0</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
