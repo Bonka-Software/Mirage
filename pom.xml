@@ -6,38 +6,59 @@
 
   <groupId>gg.bonka</groupId>
   <artifactId>Mirage</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
 
   <name>Mirage</name>
 
     <description>A minecraft plugin that can reset worlds at server startup</description>
     <properties>
-    <java.version>1.8</java.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
     <url>https://bonka.gg/</url>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>bytecode.space</id>
+            <url>https://repo.bytecode.space/repository/maven-public/</url>
+        </pluginRepository>
+    </pluginRepositories>
 
     <build>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version>
+        <version>3.10.1</version>
         <configuration>
           <source>${java.version}</source>
-          <target>${java.version}</target>
+            <target>${java.version}</target>
+          <compilerArgs>
+              <arg>-parameters</arg>
+          </compilerArgs>
         </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.2.4</version>
+        <version>3.4.1</version>
         <configuration>
+          <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
           <outputDirectory>${project.basedir}/server/plugins</outputDirectory>
           <!-- only keep shaded jar -->
           <shadedArtifactAttached>true</shadedArtifactAttached>
           <shadedClassifierName>shaded</shadedClassifierName>
+          <relocations>
+              <relocation>
+                  <pattern>co.aikar.commands</pattern>
+                  <shadedPattern>gg.bonka.mirage.acf</shadedPattern> <!-- Replace this -->
+              </relocation>
+              <relocation>
+                  <pattern>co.aikar.locales</pattern>
+                  <shadedPattern>gg.bonka.mirage.locales</shadedPattern> <!-- Replace this -->
+              </relocation>
+            </relocations>
         </configuration>
         <executions>
           <execution>
@@ -46,6 +67,19 @@
               <goal>shade</goal>
             </goals>
           </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>ca.bkaw</groupId>
+        <artifactId>paper-nms-maven-plugin</artifactId>
+        <version>1.4.4</version>
+        <executions>
+          <execution>
+           <phase>process-classes</phase>
+           <goals>
+             <goal>remap</goal>
+           </goals>
+        </execution>
         </executions>
       </plugin>
     </plugins>
@@ -66,6 +100,10 @@
           <id>sonatype</id>
           <url>https://oss.sonatype.org/content/groups/public/</url>
       </repository>
+      <repository>
+          <id>aikar</id>
+          <url>https://repo.aikar.co/content/groups/aikar/</url>
+      </repository>
   </repositories>
 
   <dependencies>
@@ -73,6 +111,33 @@
           <groupId>io.papermc.paper</groupId>
           <artifactId>paper-api</artifactId>
           <version>1.20.1-R0.1-SNAPSHOT</version>
+          <scope>provided</scope>
+      </dependency>
+
+      <dependency>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok</artifactId>
+          <version>1.18.34</version>
+          <scope>provided</scope>
+      </dependency>
+
+      <dependency>
+          <groupId>co.aikar</groupId>
+          <artifactId>acf-paper</artifactId>
+          <version>0.5.1-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.zeroturnaround</groupId>
+          <artifactId>zt-zip</artifactId>
+          <version>1.17</version>
+          <type>jar</type>
+      </dependency>
+
+      <dependency>
+          <groupId>ca.bkaw</groupId>
+          <artifactId>paper-nms</artifactId>
+          <version>1.20.1-SNAPSHOT</version>
           <scope>provided</scope>
       </dependency>
   </dependencies>

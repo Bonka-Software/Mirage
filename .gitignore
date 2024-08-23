@@ -113,6 +113,8 @@ buildNumber.properties
 run/
 server/*
 
-!server/server.properties
 !server/server-icon.png
 !server/README.md
+
+# NMS https://github.com/Alvinn8/paper-nms-maven-plugin
+.paper-nms
