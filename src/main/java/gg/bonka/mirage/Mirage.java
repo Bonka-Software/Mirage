@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.commands.WorldCommand;
+import gg.bonka.mirage.packets.ProtocolLibHook;
 import gg.bonka.mirage.world.MirageWorld;
 import gg.bonka.mirage.world.rollback.WorldsTracker;
 import lombok.Getter;
@@ -36,6 +37,8 @@ public final class Mirage extends JavaPlugin {
         } catch (IOException e) {
             throw new RuntimeException("Error occurred while trying to set up the mirage file directory system", e);
         }
+
+        new ProtocolLibHook();
 
         commandManager = new PaperCommandManager(this);
 
