@@ -8,12 +8,13 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.0.0
-The very first official version of Mirage contains:
+#### Version 1.1.0
+This version of Mirage contains:
 - Mirage world loading
 - Backup system
 - Rollbacks
 - Per world (in-game) configurability
+- Per player chunk rendering (Mainly available through the API)
 
 ![WorldSave](https://github.com/user-attachments/assets/bf5177c4-435f-4ced-88e5-f7dd992fc19c)
 
@@ -32,7 +33,7 @@ The very first official version of Mirage contains:
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -42,6 +43,8 @@ The very first official version of Mirage contains:
 
 Mirage uses 2 singletons from where you can easily save, load, backup and rollback mirage worlds!
 These singletons are `WorldsDirectoryManager` and `WorldsTracker`.
+
+Mirage 1.1 also introduces a new Singleton `ChunkRenderingSystem` for rendering fake chunks.
 
 Also, don't forget to add mirage as a dependency in you `plugin.yml`:<br>
 `depend: [Mirage]` or `softdepend: [Mirage]`
@@ -87,6 +90,26 @@ You can either update the tracked world, meaning you save the current state of t
 Or you can reset the world to its previous state (again, memory only, the world won't get reloaded from disk, this is impossible without kicking players from the world).
 
 These function are: `trackedWorld.updateSave()` and `trackedWorld.reset()`.
+
+### ChunksRenderingSystem
+
+Used to render different chunks or worlds for different players.
+This system may be useful if you run a RPG server, or other very linear games.
+Keep in mind that this is rendering only, players can't really interact with fake chunks out of the box.
+You'll have to implement some other programming trickery to support interactions. 
+But this system is perfect for rendering out of bounds chunks!
+
+This system can be accessed via the `ChunksRenderingSystem` singleton.
+
+```java
+void RenderWorldAs(Player player, World world, World visualizer) {
+    //Renders the world as the visualizer for the given player
+    ChunkRenderingSystem.getInstance().renderWorldAs(player, world, visualizer);
+
+    //Don't forget to reload the player's chunks when you change their chunks
+    ChunkRenderingSystem.getInstance().updateChunks(receiver);   
+}
+```
 
 ---
 
