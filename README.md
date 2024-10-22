@@ -16,7 +16,9 @@ This version of Mirage contains:
 - Per world (in-game) configurability
 - Per player chunk rendering (Mainly available through the API)
 
-![WorldSave](https://github.com/user-attachments/assets/bf5177c4-435f-4ced-88e5-f7dd992fc19c)
+![WorldSwitching-ezgif com-optimize](https://github.com/user-attachments/assets/b2a496a7-3b4b-4d18-8eb5-2f7d5fd5ea2a)
+
+These are all the same world, just rendering as different mirage worlds! Using /world renderas <name> <world> <visualizer>
 
 ---
 
@@ -90,6 +92,8 @@ You can either update the tracked world, meaning you save the current state of t
 Or you can reset the world to its previous state (again, memory only, the world won't get reloaded from disk, this is impossible without kicking players from the world).
 
 These function are: `trackedWorld.updateSave()` and `trackedWorld.reset()`.
+
+![WorldSave](https://github.com/user-attachments/assets/bf5177c4-435f-4ced-88e5-f7dd992fc19c)
 
 ### ChunksRenderingSystem
 
