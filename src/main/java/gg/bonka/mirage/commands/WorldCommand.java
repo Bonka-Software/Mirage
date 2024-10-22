@@ -3,6 +3,7 @@ package gg.bonka.mirage.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import gg.bonka.mirage.Mirage;
+import gg.bonka.mirage.chunks.ChunkRenderingSystem;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.filesystem.eventhandlers.WorldInitHandler;
 import gg.bonka.mirage.misc.Chat;
@@ -222,6 +223,39 @@ public class WorldCommand extends BaseCommand {
         });
     }
 
+    @Subcommand("renderAs")
+    @CommandCompletion("@players @world @world")
+    @Description("Shows mirage worlds data")
+    @CommandPermission("mirage.command.rendering")
+    public void renderAs(Player player, @Single String receiverName, @Single String worldName, @Single String visualizerName) {
+        Player receiver = Bukkit.getPlayer(receiverName);
+        World world = Bukkit.getWorld(worldName);
+        World visualizer = Bukkit.getWorld(visualizerName);
+
+        if(receiver == null) {
+            player.sendMessage(Chat.format(String.format("%s is not online!", receiverName), ChatColor.ERROR));
+            return;
+        }
+
+        if(world == null) {
+            throwWorldError(player, worldName);
+            return;
+        }
+
+        if(visualizer == null) {
+            throwWorldError(player, visualizerName);
+            return;
+        }
+
+        if(world.getEnvironment() != visualizer.getEnvironment()) {
+            player.sendMessage(Chat.format("The worlds need to be the same dimension!", ChatColor.ERROR));
+            return;
+        }
+
+        ChunkRenderingSystem.getInstance().renderWorldAs(receiver, world, visualizer);
+        ChunkRenderingSystem.getInstance().updateChunks(receiver);
+    }
+
     @Subcommand("settings")
     @CommandCompletion("@world")
     @Description("Opens the world settings GUI")
@@ -359,6 +393,10 @@ public class WorldCommand extends BaseCommand {
                 this.cancel();
             }
         }.runTaskLater(Mirage.getInstance(), 40L);
+    }
+
+    private void throwWorldError(Player player, String worldName) {
+        player.sendMessage(Chat.format(String.format("%s is not a valid world!", worldName), ChatColor.ERROR));
     }
 
     /**

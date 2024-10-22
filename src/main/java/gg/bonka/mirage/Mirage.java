@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.commands.WorldCommand;
+import gg.bonka.mirage.chunks.ChunkRenderingSystem;
 import gg.bonka.mirage.world.MirageWorld;
 import gg.bonka.mirage.world.rollback.WorldsTracker;
 import lombok.Getter;
@@ -14,7 +15,7 @@ import java.io.IOException;
 
 public final class Mirage extends JavaPlugin {
 
-    private final static String version = "0.0.1";
+    private final static String version = "1.1.0";
 
     @Getter
     private static Mirage instance;
@@ -36,6 +37,8 @@ public final class Mirage extends JavaPlugin {
         } catch (IOException e) {
             throw new RuntimeException("Error occurred while trying to set up the mirage file directory system", e);
         }
+
+        new ChunkRenderingSystem();
 
         commandManager = new PaperCommandManager(this);
 
