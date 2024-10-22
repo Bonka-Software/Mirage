@@ -2,7 +2,6 @@ package gg.bonka.mirage.chunks;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import gg.bonka.mirage.Mirage;
@@ -10,46 +9,34 @@ import gg.bonka.mirage.chunks.packets.ChunkPacket;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
+import java.util.Optional;
 
-public class PerPlayerChunkSystem {
+public class ChunkRenderingSystem {
 
     @Getter
-    private static PerPlayerChunkSystem instance;
-
-    private final ProtocolManager protocolManager;
+    private static ChunkRenderingSystem instance;
 
     private final HashMap<Player, ChunkRenderSettings> playerRenderSettings = new HashMap<>();
 
-    public PerPlayerChunkSystem() {
+    public ChunkRenderingSystem() {
         if(instance != null) {
             throw new IllegalStateException("Mirage PerPlayerChunkSystem instance already exists!");
         }
 
         instance = this;
-        protocolManager = ProtocolLibrary.getProtocolManager();
 
-        protocolManager.addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.MAP_CHUNK) {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.MAP_CHUNK) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                ChunkRenderSettings renderSettings = playerRenderSettings.get(event.getPlayer());
-
-                if(renderSettings == null) {
-                    return;
-                }
-
                 int chunkX = event.getPacket().getIntegers().read(0);
                 int chunkZ = event.getPacket().getIntegers().read(1);
 
-                Chunk chunk = event.getPlayer().getWorld().getChunkAt(chunkX, chunkZ);
-
-                World renderWorld = renderSettings.getRenderWorldAs().get(event.getPlayer().getWorld());
-                Chunk renderChunk = renderWorld != null ? renderWorld.getChunkAt(chunkX, chunkZ) : renderSettings.getRenderChunkAs().get(chunk);
-
-                event.setPacket(new ChunkPacket(chunkX, chunkZ, renderChunk));
+                event.setPacket(getChunkPacket(event.getPlayer(), chunkX, chunkZ));
             }
         });
     }
@@ -58,32 +45,20 @@ public class PerPlayerChunkSystem {
      * Updates the chunks around a player based on the specified render distance.
      *
      * @param player the player for whom the chunks are updated
-     * @param useClientRenderDistance a boolean indicating whether to use the client's render distance (more expensive but visually better)
      */
-    public void updateChunks(Player player, boolean useClientRenderDistance) {
-        int renderDistance = useClientRenderDistance ? player.getClientViewDistance() : Bukkit.getViewDistance();
-        Chunk playerChunk = player.getChunk();
+    public void updateChunks(Player player) {
+        Location location = player.getLocation();
+        Optional<World> randomWorld = Bukkit.getWorlds().stream().filter(world -> world != player.getWorld()).findFirst();
 
-        for(int x = -renderDistance; x < renderDistance; x++) {
-            for(int z = -renderDistance; z < renderDistance; z++) {
-                if (Math.sqrt(x * x + z * z) > renderDistance) {
-                    continue;
-                }
-
-                int chunkX = playerChunk.getX() + x / 16;
-                int chunkZ = playerChunk.getZ() + z / 16;
-
-                Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
-                protocolManager.sendServerPacket(player, new ChunkPacket(chunkX, chunkZ, chunk));
-            }
-        }
+        randomWorld.ifPresent(world -> player.teleport(world.getSpawnLocation()));
+        player.teleport(location);
     }
 
     /**
      * Renders the world as the visualizer world for the given player.
      *
      * @apiNote This does not automatically update the client side chunks that are currently loaded!
-     * @see PerPlayerChunkSystem#updateChunks(Player, boolean) updateChunks to update the loaded chunks automatically.
+     * @see ChunkRenderingSystem#updateChunks(Player) updateChunks to update the loaded chunks automatically.
      *
      * @param player the player for whom the world is rendered
      * @param world the original world to render
@@ -104,7 +79,7 @@ public class PerPlayerChunkSystem {
      * Renders the specified chunk as the visualizer chunk for the given player.
      *
      * @apiNote This does not automatically update the client side chunks that are currently loaded!
-     * @see PerPlayerChunkSystem#updateChunks(Player, boolean) updateChunks to update the loaded chunks automatically.
+     * @see ChunkRenderingSystem#updateChunks(Player) updateChunks to update the loaded chunks automatically.
      *
      * @param player the player for whom the chunk is rendered
      * @param chunk the original chunk to render
@@ -125,7 +100,7 @@ public class PerPlayerChunkSystem {
      * Removes the rendering settings associated with the specified player.
      *
      * @apiNote This does not automatically update the client side chunks that are currently loaded!
-     * @see PerPlayerChunkSystem#updateChunks(Player, boolean) updateChunks to update the loaded chunks automatically.
+     * @see ChunkRenderingSystem#updateChunks(Player) updateChunks to update the loaded chunks automatically.
      *
      * @param player the player for whom to remove the rendering settings
      */
@@ -140,8 +115,8 @@ public class PerPlayerChunkSystem {
      * @apiNote This does not automatically update the client side chunks that are currently loaded!
      *          Also doesn't completely remove rendering from the world, specific chunks will keep rendering differently.
      *
-     * @see PerPlayerChunkSystem#updateChunks(Player, boolean) updateChunks to update the loaded chunks automatically.
-     * @see PerPlayerChunkSystem#removeRendering(Player) removeRendering use this instead if you want to remove all rendering from the player.
+     * @see ChunkRenderingSystem#updateChunks(Player) updateChunks to update the loaded chunks automatically.
+     * @see ChunkRenderingSystem#removeRendering(Player) removeRendering use this instead if you want to remove all rendering from the player.
      *
      * @param player the player whose rendering settings are considered
      * @param world the world to remove from rendering settings
@@ -160,7 +135,7 @@ public class PerPlayerChunkSystem {
      * Removes the specified chunk from the rendering settings associated with the player.
      *
      * @apiNote This does not automatically update the client side chunks that are currently loaded!
-     * @see PerPlayerChunkSystem#updateChunks(Player, boolean) updateChunks to update the loaded chunks automatically.
+     * @see ChunkRenderingSystem#updateChunks(Player) updateChunks to update the loaded chunks automatically.
      *
      * @param player the player whose rendering settings are considered
      * @param chunk the chunk to remove from rendering settings
@@ -173,5 +148,19 @@ public class PerPlayerChunkSystem {
         }
 
         chunkRenderSettings.getRenderChunkAs().remove(chunk);
+    }
+
+    private ChunkPacket getChunkPacket(Player player, int chunkX, int chunkZ) {
+        ChunkRenderSettings renderSettings = playerRenderSettings.get(player);
+        Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
+
+        if(renderSettings == null) {
+            return new ChunkPacket(chunkX, chunkZ, chunk);
+        }
+
+        World renderWorld = renderSettings.getRenderWorldAs().get(player.getWorld());
+        Chunk renderChunk = renderWorld != null ? renderWorld.getChunkAt(chunkX, chunkZ) : renderSettings.getRenderChunkAs().get(chunk);
+
+        return new ChunkPacket(chunkX, chunkZ, renderChunk);
     }
 }
