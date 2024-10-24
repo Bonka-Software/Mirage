@@ -8,7 +8,7 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.1.0
+#### Version 1.1.1
 This version of Mirage contains:
 - Mirage world loading
 - Backup system
@@ -35,7 +35,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -117,14 +117,14 @@ void RenderWorldAs(Player player, World world, World visualizer) {
 
 ---
 
-## Server version Paper 1.20.1
-[Download directly here](https://api.papermc.io/v2/projects/paper/versions/1.20.1/builds/196/downloads/paper-1.20.1-196.jar)
+## Server version Paper 1.20.6
+[Download directly here](https://api.papermc.io/v2/projects/paper/versions/1.20.6/builds/150/downloads/paper-1.20.6-150.jar)
 or [Browse paper builds](https://papermc.io/downloads/all)
 
 ---
 
 ## How to start:
-- Download all maven dependecies
+- Download all maven dependencies
 - Follow the steps described in [paper nms maven plugin's readme](https://github.com/Alvinn8/paper-nms-maven-plugin)
 - Follow the steps described in the [Server Readme](server/README.md)
 - Run jetbrains .run config and a test server automatically starts

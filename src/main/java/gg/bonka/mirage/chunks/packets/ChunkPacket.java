@@ -9,7 +9,7 @@ import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.bukkit.Chunk;
-import org.bukkit.craftbukkit.v1_20_R1.CraftWorld;
+import org.bukkit.craftbukkit.CraftWorld;
 
 public class ChunkPacket extends PacketContainer {
 
