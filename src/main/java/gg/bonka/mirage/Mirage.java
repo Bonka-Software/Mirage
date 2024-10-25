@@ -15,7 +15,7 @@ import java.io.IOException;
 
 public final class Mirage extends JavaPlugin {
 
-    private final static String version = "1.1.0";
+    private final static String version = "1.1.2";
 
     @Getter
     private static Mirage instance;
