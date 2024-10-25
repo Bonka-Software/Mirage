@@ -1,8 +1,8 @@
 package gg.bonka.mirage.world.rollback;
 
-import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
+import gg.bonka.mirage.Mirage;
 import gg.bonka.mirage.world.MirageWorld;
-import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
@@ -14,19 +14,10 @@ import org.bukkit.event.world.WorldInitEvent;
 import java.util.HashMap;
 import java.util.HashSet;
 
+@NoArgsConstructor
 public class WorldsTracker implements Listener {
 
-    @Getter
-    private static WorldsTracker instance;
-
     private final HashMap<String, TrackedWorld> trackedWorlds = new HashMap<>();
-
-    public WorldsTracker() {
-        if(instance != null)
-            throw new IllegalStateException("Singleton WorldsTracker has already been initialized");
-
-        instance = this;
-    }
 
     public TrackedWorld getTrackedWorld(String worldName) {
         return trackedWorlds.get(worldName);
@@ -66,7 +57,7 @@ public class WorldsTracker implements Listener {
      * Checks for updates in the MirageWorlds directory and updates the tracked worlds accordingly.
      */
     public void checkForMirageWorldsUpdate() {
-        HashSet<MirageWorld> mirageWorlds = WorldsDirectoryManager.getInstance().getWorlds();
+        HashSet<MirageWorld> mirageWorlds = Mirage.getInstance().getWorldsDirectoryManager().getWorlds();
 
         if(trackedWorlds.size() == mirageWorlds.size())
             return;

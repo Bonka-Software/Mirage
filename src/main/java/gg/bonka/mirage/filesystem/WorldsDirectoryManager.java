@@ -46,9 +46,6 @@ public class WorldsDirectoryManager {
     private static final File saveDirectory = new File(serverPath, relativeSaveDirectory);
     private static final File backupDirectory = new File(serverPath, relativeBackupDirectory);
 
-    @Getter
-    private static WorldsDirectoryManager instance;
-
     private final HashSet<MirageWorld> worlds = new HashSet<>();
 
     /**
@@ -56,11 +53,6 @@ public class WorldsDirectoryManager {
      * and saving worlds to that directory.
      */
     public WorldsDirectoryManager() throws IOException {
-        if(instance != null)
-            throw new IllegalStateException("Singleton WorldsDirectoryManager has already been initialized");
-
-        instance = this;
-
         Properties serverProperties = new Properties();
         serverProperties.load(Files.newInputStream(new File(Bukkit.getWorldContainer(), "server.properties").toPath()));
 
@@ -283,7 +275,7 @@ public class WorldsDirectoryManager {
 
         //The main world can't be deleted like this
         //We also don't ever delete persistent worlds, for quite obvious reasons.
-        if(Bukkit.getWorlds().get(0).getName().equals(worldName) || mirageWorld.getPersistent())
+        if(Bukkit.getWorlds().getFirst().getName().equals(worldName) || mirageWorld.getPersistent())
            return;
 
         File worldDirectory = new File(activeDirectory, worldName);

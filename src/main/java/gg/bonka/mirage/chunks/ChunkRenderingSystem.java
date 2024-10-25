@@ -6,7 +6,6 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import gg.bonka.mirage.Mirage;
 import gg.bonka.mirage.chunks.packets.ChunkPacket;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -18,18 +17,9 @@ import java.util.Optional;
 
 public class ChunkRenderingSystem {
 
-    @Getter
-    private static ChunkRenderingSystem instance;
-
     private final HashMap<Player, ChunkRenderSettings> playerRenderSettings = new HashMap<>();
 
     public ChunkRenderingSystem() {
-        if(instance != null) {
-            throw new IllegalStateException("Mirage PerPlayerChunkSystem instance already exists!");
-        }
-
-        instance = this;
-
         ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.MAP_CHUNK) {
             @Override
             public void onPacketSending(PacketEvent event) {

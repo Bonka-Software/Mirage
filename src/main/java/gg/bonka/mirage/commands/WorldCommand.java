@@ -29,15 +29,23 @@ import java.util.stream.Collectors;
 @CommandPermission("mirage.command.world")
 public class WorldCommand extends BaseCommand {
 
-    public WorldCommand() {
+    private final WorldsDirectoryManager worldsDirectoryManager;
+    private final WorldsTracker worldsTracker;
+    private final ChunkRenderingSystem chunkRenderingSystem;
+
+    public WorldCommand(WorldsDirectoryManager worldsDirectoryManager, WorldsTracker worldsTracker, ChunkRenderingSystem chunkRenderingSystem) {
         registerWorldArguments();
+
+        this.worldsDirectoryManager = worldsDirectoryManager;
+        this.worldsTracker = worldsTracker;
+        this.chunkRenderingSystem = chunkRenderingSystem;
     }
 
     @Default
     @CommandCompletion("@nothing")
     @Description("Shows mirage worlds data")
     public void onCommand(Player player) {
-        player.sendMessage(Chat.format(String.format("Available worlds: %s", WorldsDirectoryManager.getInstance().getWorlds()), ChatColor.INFO));
+        player.sendMessage(Chat.format(String.format("Available worlds: %s", worldsDirectoryManager.getWorlds()), ChatColor.INFO));
     }
 
     @Subcommand("create")
@@ -45,7 +53,7 @@ public class WorldCommand extends BaseCommand {
     @Description("Creates the given world")
     @CommandPermission("mirage.command.world.create")
     public void create(Player player, @Single String worldName, @Single String persistent, @Optional String copyFromWorldName) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().anyMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().anyMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s already exists!", worldName), ChatColor.ERROR));
             return;
         }
@@ -63,7 +71,7 @@ public class WorldCommand extends BaseCommand {
             Component successMessage = Chat.format(String.format("Successfully copied: %s to %s world, use /world go %s to check it out!", copyFromWorldName, worldName, worldName), ChatColor.SUCCESS);
 
             MirageWorld copyFormWorld = WorldsDirectoryManager.getMirageWorld(copyFromWorldName);
-            WorldsDirectoryManager.getInstance().copyWorldAsync(copyFormWorld, worldName, isPersistent, (success, message) ->
+            worldsDirectoryManager.copyWorldAsync(copyFormWorld, worldName, isPersistent, (success, message) ->
                     handleWorldCreationCallback(player, success, message, successMessage)
             );
 
@@ -77,7 +85,7 @@ public class WorldCommand extends BaseCommand {
             MirageWorld world = WorldsDirectoryManager.getMirageWorld(worldName);
             world.setPersistent(isPersistent);
 
-            WorldsDirectoryManager.getInstance().saveWorldAsync(world, (success, message) ->
+            worldsDirectoryManager.saveWorldAsync(world, (success, message) ->
                     handleWorldCreationCallback(player, success, message, successMessage)
             );
         });
@@ -93,12 +101,12 @@ public class WorldCommand extends BaseCommand {
     @Description("Deletes the given world, will send the players in the world to the destination world, will show them a message when you choose the show them!")
     @CommandPermission("mirage.command.world.remove")
     public void remove(Player player, @Single String worldName, @Single String destinationWorldName, @Single String showMessage) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
             return;
         }
 
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(destinationWorldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(destinationWorldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", destinationWorldName), ChatColor.ERROR));
             return;
         }
@@ -130,7 +138,7 @@ public class WorldCommand extends BaseCommand {
             Bukkit.unloadWorld(world, false);
         }
 
-        WorldsDirectoryManager.getInstance().removeWorldAsync(WorldsDirectoryManager.getMirageWorld(worldName), (success, message) -> {
+        worldsDirectoryManager.removeWorldAsync(WorldsDirectoryManager.getMirageWorld(worldName), (success, message) -> {
             if (success) {
                 player.sendMessage(Chat.format(String.format("World: %s has been removed successfully!", worldName), ChatColor.SUCCESS));
                 registerWorldArguments();
@@ -145,7 +153,7 @@ public class WorldCommand extends BaseCommand {
     @Description("Teleport to the given world")
     @CommandPermission("mirage.command.world.teleport")
     public void go(Player player, @Single String worldName) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
             return;
         }
@@ -153,7 +161,7 @@ public class WorldCommand extends BaseCommand {
         World world = Bukkit.getWorld(worldName);
 
         if(world == null) {
-            WorldsDirectoryManager.getInstance().loadWorldAsync(WorldsDirectoryManager.getMirageWorld(worldName), (success, message) ->
+            worldsDirectoryManager.loadWorldAsync(WorldsDirectoryManager.getMirageWorld(worldName), (success, message) ->
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -181,7 +189,7 @@ public class WorldCommand extends BaseCommand {
     @Description("Saves the world")
     @CommandPermission("mirage.command.world.save")
     public void save(Player player, @Single String worldName) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
             return;
         }
@@ -195,7 +203,7 @@ public class WorldCommand extends BaseCommand {
     @Description("Resets the world to it's saved stage")
     @CommandPermission("mirage.command.world.reset")
     public void reset(Player player, @Single String worldName) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
             return;
         }
@@ -211,7 +219,7 @@ public class WorldCommand extends BaseCommand {
             player.sendMessage(Chat.format("Resetting world...", ChatColor.SUCCESS));
 
             if(world.getUseRollback()) {
-                WorldsTracker.getInstance().getTrackedWorld(worldName).reset();
+                worldsTracker.getTrackedWorld(worldName).reset();
             } else {
                 if(!resetWorld(player, world)) {
                     player.sendMessage(Chat.format(String.format("was not able to reset %s", worldName), ChatColor.ERROR));
@@ -252,8 +260,8 @@ public class WorldCommand extends BaseCommand {
             return;
         }
 
-        ChunkRenderingSystem.getInstance().renderWorldAs(receiver, world, visualizer);
-        ChunkRenderingSystem.getInstance().updateChunks(receiver);
+        chunkRenderingSystem.renderWorldAs(receiver, world, visualizer);
+        chunkRenderingSystem.updateChunks(receiver);
     }
 
     @Subcommand("settings")
@@ -261,7 +269,7 @@ public class WorldCommand extends BaseCommand {
     @Description("Opens the world settings GUI")
     @CommandPermission("mirage.command.world.settings")
     public void settings(Player player, @Single String worldName) {
-        if(WorldsDirectoryManager.getInstance().getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
+        if(worldsDirectoryManager.getWorlds().stream().noneMatch(mirageWorld -> mirageWorld.getWorldName().equals(worldName))) {
             player.sendMessage(Chat.format(String.format("World: %s doesn't exist!", worldName), ChatColor.ERROR));
             return;
         }
@@ -292,7 +300,7 @@ public class WorldCommand extends BaseCommand {
 
         TagResolver useRollbackTag = Placeholder.styling("userollback", getColor(world.getUseRollback()), ClickEvent.callback(audience -> {
             world.setUseRollback(!world.getUseRollback());
-            WorldsTracker.getInstance().checkForMirageWorldsUpdate();
+            worldsTracker.checkForMirageWorldsUpdate();
 
             refreshSettingsScreen(player, world);
         }));
@@ -328,7 +336,7 @@ public class WorldCommand extends BaseCommand {
     private boolean resetWorld(Player initializer, MirageWorld mirageWorld) {
         World bukkitWorld = Bukkit.getWorld(mirageWorld.getWorldName());
 
-        if(Bukkit.getWorlds().get(0).equals(bukkitWorld)) {
+        if(Bukkit.getWorlds().getFirst().equals(bukkitWorld)) {
             initializer.sendMessage(Chat.format("It's not possible to reset the main world without rollback enabled!", ChatColor.ERROR));
             return false;
         }
@@ -341,7 +349,7 @@ public class WorldCommand extends BaseCommand {
         }
 
         Bukkit.unloadWorld(bukkitWorld, false);
-        WorldsDirectoryManager.getInstance().loadWorldAsync(mirageWorld, (success, message) -> {
+        worldsDirectoryManager.loadWorldAsync(mirageWorld, (success, message) -> {
             if(!success)
                 initializer.sendMessage(Chat.format(message, ChatColor.ERROR));
 
@@ -380,13 +388,13 @@ public class WorldCommand extends BaseCommand {
         //There is no way to check if the world has finished saving...
         new BukkitRunnable() {
             public void run() {
-                WorldsDirectoryManager.getInstance().saveWorldAsync(world, (success, message) -> {
+                worldsDirectoryManager.saveWorldAsync(world, (success, message) -> {
                     if (!success) {
                         player.sendMessage(Chat.format(message, ChatColor.ERROR));
                         return;
                     }
 
-                    WorldsTracker.getInstance().getTrackedWorld(world.getWorldName()).updateSave();
+                    worldsTracker.getTrackedWorld(world.getWorldName()).updateSave();
                     player.sendMessage(Chat.format(String.format("%s was saved!", world.getWorldName()), ChatColor.SUCCESS));
                 });
 
@@ -406,7 +414,7 @@ public class WorldCommand extends BaseCommand {
      */
     private void registerWorldArguments() {
         Mirage.getInstance().getCommandManager().getCommandCompletions().registerCompletion("world", c ->
-                WorldsDirectoryManager.getInstance().getWorlds().stream().map(MirageWorld::getWorldName).collect(Collectors.toList())
+                worldsDirectoryManager.getWorlds().stream().map(MirageWorld::getWorldName).collect(Collectors.toList())
         );
     }
 }
