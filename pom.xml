@@ -6,7 +6,7 @@
 
   <groupId>gg.bonka</groupId>
   <artifactId>Mirage</artifactId>
-  <version>1.1.1</version>
+  <version>1.1.2</version>
   <packaging>jar</packaging>
 
   <name>Mirage</name>
@@ -113,7 +113,7 @@
       <dependency>
           <groupId>io.papermc.paper</groupId>
           <artifactId>paper-api</artifactId>
-          <version>1.20.6-R0.1-SNAPSHOT</version>
+          <version>1.21.1-R0.1-SNAPSHOT</version>
           <scope>provided</scope>
       </dependency>
       <dependency>
@@ -136,7 +136,7 @@
       <dependency>
           <groupId>ca.bkaw</groupId>
           <artifactId>paper-nms</artifactId>
-          <version>1.20.6-SNAPSHOT</version>
+          <version>1.21.1-SNAPSHOT</version>
           <scope>provided</scope>
       </dependency>
       <dependency>
