@@ -8,7 +8,7 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.1.1
+#### Version 1.1.2
 This version of Mirage contains:
 - Mirage world loading
 - Backup system
@@ -35,7 +35,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
 </dependency>
 ```
 
@@ -117,8 +117,8 @@ void RenderWorldAs(Player player, World world, World visualizer) {
 
 ---
 
-## Server version Paper 1.20.6
-[Download directly here](https://api.papermc.io/v2/projects/paper/versions/1.20.6/builds/150/downloads/paper-1.20.6-150.jar)
+## Server version Paper 1.21.1
+[Download directly here](https://api.papermc.io/v2/projects/paper/versions/1.21.1/builds/128/downloads/paper-1.21.1-128.jar)
 or [Browse paper builds](https://papermc.io/downloads/all)
 
 ---
