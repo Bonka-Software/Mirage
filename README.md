@@ -36,6 +36,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
     <version>1.1.2</version>
+    <scope>provided</scope>
 </dependency>
 ```
 
