@@ -14,6 +14,7 @@ import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Optional;
 
 public class ChunkRenderingSystem {
@@ -56,6 +57,9 @@ public class ChunkRenderingSystem {
 
                 World renderAsWorld = renderSettings.getRenderWorldAs().get(location.getWorld());
                 Chunk renderAsChunk = renderSettings.getRenderChunkAs().get(location.getChunk());
+
+                if(renderAsWorld == null && renderAsChunk == null)
+                    return;
 
                 // Get the fake block, and simply swap the type of the packet
                 Location renderLocation = new Location(renderAsWorld != null ? renderAsWorld : renderAsChunk.getWorld(), position.getX(), position.getY(), position.getZ());
@@ -182,13 +186,12 @@ public class ChunkRenderingSystem {
         ChunkRenderSettings renderSettings = playerRenderSettings.get(player);
         Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
 
-        if(renderSettings == null) {
+        if(renderSettings == null)
             return new ChunkPacket(chunkX, chunkZ, chunk);
-        }
 
         World renderWorld = renderSettings.getRenderWorldAs().get(player.getWorld());
         Chunk renderChunk = renderWorld != null ? renderWorld.getChunkAt(chunkX, chunkZ) : renderSettings.getRenderChunkAs().get(chunk);
 
-        return new ChunkPacket(chunkX, chunkZ, renderChunk);
+        return new ChunkPacket(chunkX, chunkZ, Objects.requireNonNullElse(renderChunk, chunk));
     }
 }
