@@ -51,7 +51,6 @@ public class ChunkRenderingSystem {
                     return;
 
                 BlockPosition position = event.getPacket().getBlockPositionModifier().read(0);
-                WrappedBlockData data = event.getPacket().getBlockData().read(0);
 
                 Location location = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
 
@@ -60,7 +59,7 @@ public class ChunkRenderingSystem {
 
                 // Get the fake block, and simply swap the type of the packet
                 Location renderLocation = new Location(renderAsWorld != null ? renderAsWorld : renderAsChunk.getWorld(), position.getX(), position.getY(), position.getZ());
-                data.setType(renderLocation.getBlock().getType());
+                WrappedBlockData data = WrappedBlockData.createData(renderLocation.getBlock().getBlockData());
 
                 PacketContainer packet = event.getPacket();
                 event.getPacket().getBlockData().write(0, data);
