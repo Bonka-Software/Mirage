@@ -3,14 +3,14 @@ package gg.bonka.mirage.chunks;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.WrappedBlockData;
 import gg.bonka.mirage.Mirage;
 import gg.bonka.mirage.chunks.packets.ChunkPacket;
 import lombok.Getter;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -37,6 +37,35 @@ public class ChunkRenderingSystem {
                 int chunkZ = event.getPacket().getIntegers().read(1);
 
                 event.setPacket(getChunkPacket(event.getPlayer(), chunkX, chunkZ));
+            }
+        });
+
+        // Ensures interacting with mirage blocks doesn't remove the ghost blocks.
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.BLOCK_CHANGE) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                Player player = event.getPlayer();
+                ChunkRenderSettings renderSettings = playerRenderSettings.get(player);
+
+                if(renderSettings == null)
+                    return;
+
+                BlockPosition position = event.getPacket().getBlockPositionModifier().read(0);
+                WrappedBlockData data = event.getPacket().getBlockData().read(0);
+
+                Location location = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
+
+                World renderAsWorld = renderSettings.getRenderWorldAs().get(location.getWorld());
+                Chunk renderAsChunk = renderSettings.getRenderChunkAs().get(location.getChunk());
+
+                // Get the fake block, and simply swap the type of the packet
+                Location renderLocation = new Location(renderAsWorld != null ? renderAsWorld : renderAsChunk.getWorld(), position.getX(), position.getY(), position.getZ());
+                data.setType(renderLocation.getBlock().getType());
+
+                PacketContainer packet = event.getPacket();
+                event.getPacket().getBlockData().write(0, data);
+
+                event.setPacket(packet);
             }
         });
     }
