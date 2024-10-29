@@ -2,8 +2,8 @@ package gg.bonka.mirage.chunks;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
@@ -42,7 +42,7 @@ public class ChunkRenderingSystem {
         });
 
         // Ensures interacting with mirage blocks doesn't remove the ghost blocks.
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.BLOCK_CHANGE) {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), ListenerPriority.LOWEST, PacketType.Play.Server.BLOCK_CHANGE) {
             @Override
             public void onPacketSending(PacketEvent event) {
                 Player player = event.getPlayer();
@@ -55,6 +55,14 @@ public class ChunkRenderingSystem {
 
                 Location location = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
 
+                WrappedBlockData worldBlockData = WrappedBlockData.createData(location.getBlock().getBlockData());
+                WrappedBlockData packetBlockData = event.getPacket().getBlockData().read(0);
+
+                // Means this block is already a fake block that is most likely being sent by another plugins
+                // We don't want to intervene with those packets!
+                if(!worldBlockData.equals(packetBlockData))
+                    return;
+
                 World renderAsWorld = renderSettings.getRenderWorldAs().get(location.getWorld());
                 Chunk renderAsChunk = renderSettings.getRenderChunkAs().get(location.getChunk());
 
@@ -65,10 +73,7 @@ public class ChunkRenderingSystem {
                 Location renderLocation = new Location(renderAsWorld != null ? renderAsWorld : renderAsChunk.getWorld(), position.getX(), position.getY(), position.getZ());
                 WrappedBlockData data = WrappedBlockData.createData(renderLocation.getBlock().getBlockData());
 
-                PacketContainer packet = event.getPacket();
                 event.getPacket().getBlockData().write(0, data);
-
-                event.setPacket(packet);
             }
         });
     }
