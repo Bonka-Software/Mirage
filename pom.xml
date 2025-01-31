@@ -6,11 +6,11 @@
 
   <groupId>gg.bonka</groupId>
   <artifactId>Mirage</artifactId>
-  <version>1.1.5</version>
+  <version>1.1.6</version>
   <packaging>jar</packaging>
 
   <name>Mirage</name>
-    <description>A minecraft plugin that can reset worlds at server startup</description>
+    <description>World management and rendering plugin.</description>
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -71,7 +71,7 @@
       <plugin>
         <groupId>ca.bkaw</groupId>
         <artifactId>paper-nms-maven-plugin</artifactId>
-        <version>1.4.4</version>
+        <version>1.4.5</version>
         <executions>
           <execution>
            <phase>process-classes</phase>
@@ -136,7 +136,7 @@
       <dependency>
           <groupId>ca.bkaw</groupId>
           <artifactId>paper-nms</artifactId>
-          <version>1.21.1-SNAPSHOT</version>
+          <version>1.21.4-SNAPSHOT</version>
           <scope>provided</scope>
       </dependency>
       <dependency>

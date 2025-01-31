@@ -1,19 +1,18 @@
 package gg.bonka.mirage.world.rollback;
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import gg.bonka.mirage.world.MirageWorld;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import org.bukkit.*;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.entity.CreatureSpawnEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -90,12 +89,8 @@ public class TrackedWorld {
                 entity.remove();
         }
 
-        for(CompoundTag entityJson : entities) {
-            try {
-                spawnEntity(world, entityJson);
-            } catch (CommandSyntaxException e) {
-                throw new RuntimeException(e);
-            }
+        for(CompoundTag entityNBT : entities) {
+            spawnEntity(world, entityNBT);
         }
 
         //Then we do some finishing touches by setting the time!
@@ -110,14 +105,13 @@ public class TrackedWorld {
      *
      * @param world the world in which to spawn the entity
      * @param data the entity data in the form of a CompoundTag
-     * @throws CommandSyntaxException if there is an error in the syntax of the command
      */
-    private void spawnEntity(World world, CompoundTag data) throws CommandSyntaxException {
+    private void spawnEntity(World world, CompoundTag data) {
         ServerLevel worldServer = ((CraftWorld) world).getHandle();
-        net.minecraft.world.entity.Entity spawnedEntity = EntityType.loadEntityRecursive(data, worldServer, entity -> entity);
+        net.minecraft.world.entity.Entity spawnedEntity = EntityType.loadEntityRecursive(data, worldServer, EntitySpawnReason.LOAD, entity -> entity);
 
         if (spawnedEntity != null)
-            worldServer.tryAddFreshEntityWithPassengers(spawnedEntity, CreatureSpawnEvent.SpawnReason.SPAWNER_EGG);
+            worldServer.addFreshEntityWithPassengers(spawnedEntity);
     }
 
     /**
@@ -132,7 +126,7 @@ public class TrackedWorld {
     private CompoundTag getSerializedEntity(Entity entity) {
         net.minecraft.world.entity.Entity nmsEntity = ((CraftEntity) entity).getHandle();
         CompoundTag compound = new CompoundTag();
-        nmsEntity.serializeEntity(compound);
+        nmsEntity.save(compound);
 
         return compound;
     }
