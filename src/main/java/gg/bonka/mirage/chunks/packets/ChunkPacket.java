@@ -3,7 +3,7 @@ package gg.bonka.mirage.chunks.packets;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.WrappedLevelChunkData;
-import com.destroystokyo.paper.antixray.ChunkPacketInfo;
+import io.papermc.paper.antixray.ChunkPacketInfo;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.block.state.BlockState;
