@@ -1,5 +1,7 @@
 # Mirage
 
+[Available on Spigot](https://www.spigotmc.org/resources/mirage.119105/)
+
 Custom map loading system for minecraft servers.
 It's able to reset maps to their saved state on server startup and during runtime.
 The world tracking system also allows for runtime rollbacks without kicking players.
