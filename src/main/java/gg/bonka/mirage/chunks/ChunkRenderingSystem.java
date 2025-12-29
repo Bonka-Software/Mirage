@@ -8,6 +8,8 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import gg.bonka.mirage.Mirage;
+import gg.bonka.mirage.chunks.events.FinishPlayerWorldRenderingReloadEvent;
+import gg.bonka.mirage.chunks.events.StartPlayerWorldRenderingReloadEvent;
 import gg.bonka.mirage.chunks.packets.ChunkPacket;
 import lombok.Getter;
 import org.bukkit.*;
@@ -87,8 +89,11 @@ public class ChunkRenderingSystem {
         Location location = player.getLocation();
         Optional<World> randomWorld = Bukkit.getWorlds().stream().filter(world -> world != player.getWorld()).findFirst();
 
+        new StartPlayerWorldRenderingReloadEvent(player).callEvent();
         randomWorld.ifPresent(world -> player.teleport(world.getSpawnLocation()));
+
         player.teleport(location);
+        new FinishPlayerWorldRenderingReloadEvent(player).callEvent();
     }
 
     /**
