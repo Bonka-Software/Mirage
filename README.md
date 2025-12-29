@@ -10,7 +10,7 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.1.6
+#### Version 1.1.7
 This version of Mirage contains:
 - Mirage world loading
 - Backup system
@@ -37,7 +37,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.1.6</version>
+    <version>1.1.7</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -117,6 +117,8 @@ void RenderWorldAs(Player player, World world, World visualizer) {
     ChunkRenderingSystem.getInstance().updateChunks(receiver);   
 }
 ```
+
+You can subscribe to the `StartPlayerWorldRenderingReloadEvent` & `FinishPlayerWorldRenderingReloadEvent` these are called when a player's world rendering changes.
 
 ---
 
