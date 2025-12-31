@@ -3,32 +3,47 @@ package gg.bonka.mirage.chunks.packets;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.WrappedLevelChunkData;
+import gg.bonka.mirage.chunks.ChunkUtil;
 import io.papermc.paper.antixray.ChunkPacketInfo;
 import lombok.Getter;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
-import org.bukkit.Chunk;
+import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
 
 @Getter
 public class ChunkPacket extends PacketContainer {
 
-    private final Chunk chunk;
+    private final long chunkKey;
+    private final World world;
+
+    private final boolean isValid;
 
     /**
-     * Constructs a ChunkPacket object with the specified coordinates and chunk data.
+     * Represents a packet for sending chunk data to clients in a Minecraft world. The packet
+     * includes chunk data and lighting information necessary for rendering the specified chunk
+     * at given coordinates.
      *
-     * @param x The X coordinate of the chunk.
-     * @param z The Z coordinate of the chunk.
-     * @param chunk The Chunk object containing the chunk data.
+     * @param x the x-coordinate of the chunk to be sent
+     * @param z the z-coordinate of the chunk to be sent
+     * @param world the world containing the chunk to construct the packet from
      */
-    public ChunkPacket(int x, int z, Chunk chunk) {
+    public ChunkPacket(int x, int z, World world) {
         super(PacketType.Play.Server.MAP_CHUNK);
-        this.chunk = chunk;
+        this.world = world;
+        this.chunkKey = ChunkUtil.getChunkKey(x, z);
 
-        LevelChunk levelChunk = ((CraftWorld) chunk.getWorld()).getHandle().getChunk(chunk.getX(), chunk.getZ());
+        ServerChunkCache chunkCache = ((CraftWorld) world).getHandle().getChunkSource();
+        LevelChunk levelChunk = chunkCache.getChunk(x, z, !chunkCache.hasChunk(x, z));
+
+        if(levelChunk == null) {
+            this.isValid = false;
+            return;
+        }
+
         ClientboundLevelChunkWithLightPacket chunkWithLightPacket = new ClientboundLevelChunkWithLightPacket(levelChunk, levelChunk.getLevel().getLightEngine(), null, null, false);
 
         ChunkPacketInfo<BlockState> chunkPacketInfo = new ChunkPacketInfo<>(chunkWithLightPacket, levelChunk);
@@ -41,5 +56,7 @@ public class ChunkPacket extends PacketContainer {
 
         getLevelChunkData().write(0, chunkData);
         getLightUpdateData().write(0, new WrappedLevelChunkData.LightData(chunkWithLightPacket.getLightData()));
+
+        this.isValid = true;
     }
 }
