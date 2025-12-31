@@ -4,6 +4,7 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.WrappedLevelChunkData;
 import io.papermc.paper.antixray.ChunkPacketInfo;
+import lombok.Getter;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.block.state.BlockState;
@@ -11,7 +12,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.bukkit.Chunk;
 import org.bukkit.craftbukkit.CraftWorld;
 
+@Getter
 public class ChunkPacket extends PacketContainer {
+
+    private final Chunk chunk;
 
     /**
      * Constructs a ChunkPacket object with the specified coordinates and chunk data.
@@ -22,6 +26,7 @@ public class ChunkPacket extends PacketContainer {
      */
     public ChunkPacket(int x, int z, Chunk chunk) {
         super(PacketType.Play.Server.MAP_CHUNK);
+        this.chunk = chunk;
 
         LevelChunk levelChunk = ((CraftWorld) chunk.getWorld()).getHandle().getChunk(chunk.getX(), chunk.getZ());
         ClientboundLevelChunkWithLightPacket chunkWithLightPacket = new ClientboundLevelChunkWithLightPacket(levelChunk, levelChunk.getLevel().getLightEngine(), null, null, false);

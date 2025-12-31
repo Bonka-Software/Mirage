@@ -12,6 +12,8 @@ class ChunkRenderSettings {
     private final HashMap<World, World> renderWorldAs = new HashMap<>();
     private final HashMap<Chunk, Chunk> renderChunkAs = new HashMap<>();
 
+    private final HashMap<Long, World> clientsideChunks = new HashMap<>();
+
     public ChunkRenderSettings(World world, World visualizer) {
         renderWorldAs.put(world, visualizer);
     }
