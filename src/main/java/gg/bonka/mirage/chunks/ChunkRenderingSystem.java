@@ -103,20 +103,51 @@ public class ChunkRenderingSystem implements Listener {
     }
 
     /**
+     * Updates the chunks associated with the specified player, ensuring the
+     * appropriate rendering system is used based on the configuration.
+     * Determines whether to update the chunks in real-time or via a full refresh.
+     *
+     * @param player the player whose chunks are being updated
+     */
+    public void updateChunks(Player player) {
+        new StartPlayerWorldRenderingReloadEvent(player).callEvent();
+
+        if(Mirage.getInstance().getMirageConfig().isUseRealtimeWorldLoading())
+            updateChunksRealtime(player);
+        else
+            refreshWorld(player);
+    }
+
+    /**
+     * Refreshes the player's world by temporarily teleporting the player to a different world and then returning them
+     * to their original location. This method triggers events to signal the start and end of the player's world rendering reload.
+     *
+     * @param player the player whose world will be refreshed
+     */
+    private void refreshWorld(Player player) {
+        Location location = player.getLocation();
+        Optional<World> randomWorld = Bukkit.getWorlds().stream().filter(world -> world != player.getWorld()).findFirst();
+
+        new StartPlayerWorldRenderingReloadEvent(player).callEvent();
+        randomWorld.ifPresent(world -> player.teleport(world.getSpawnLocation()));
+
+        player.teleport(location);
+        new FinishPlayerWorldRenderingReloadEvent(player).callEvent();
+    }
+
+    /**
      * Updates the chunks visible to the specified player within their configured view distance.
      * The method calculates chunks around the player's current location, sorts them by distance,
      * generates update packets for these chunks, and sends them to the player.
      *
      * @param player the player whose chunks need to be updated
      */
-    public void updateChunks(Player player) {
-        new StartPlayerWorldRenderingReloadEvent(player).callEvent();
-
+    private void updateChunksRealtime(Player player) {
         World world = player.getWorld();
         Location playerLocation = player.getLocation();
         int playerX = playerLocation.getBlockX() >> 4;
         int playerZ = playerLocation.getBlockZ() >> 4;
-        int viewDistance = player.getViewDistance();
+        int viewDistance = Math.min(player.getViewDistance(), Mirage.getInstance().getMirageConfig().getMaxRealtimeWorldLoadingRenderDistance());
 
         List<Chunk> chunksToUpdate = new ArrayList<>();
 
