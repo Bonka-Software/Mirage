@@ -11,20 +11,29 @@ import gg.bonka.mirage.Mirage;
 import gg.bonka.mirage.chunks.events.FinishPlayerWorldRenderingReloadEvent;
 import gg.bonka.mirage.chunks.events.StartPlayerWorldRenderingReloadEvent;
 import gg.bonka.mirage.chunks.packets.ChunkPacket;
+import gg.bonka.mirage.chunks.packets.MultiBlockPacket;
 import lombok.Getter;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerChunkCache;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.bukkit.*;
+import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
-public class ChunkRenderingSystem {
+public class ChunkRenderingSystem implements Listener {
 
     @Getter
     private static ChunkRenderingSystem instance;
 
-    private final HashMap<Player, ChunkRenderSettings> playerRenderSettings = new HashMap<>();
+    private final Map<UUID, ChunkRenderSettings> playerRenderSettings = new HashMap<>();
+    private final Map<UUID, BukkitRunnable> playerRenderingTasks = new HashMap<>();
 
     public ChunkRenderingSystem() {
         if(instance != null) {
@@ -33,13 +42,25 @@ public class ChunkRenderingSystem {
 
         instance = this;
 
+        Bukkit.getPluginManager().registerEvents(this, Mirage.getInstance());
+
         ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(Mirage.getInstance(), PacketType.Play.Server.MAP_CHUNK) {
             @Override
             public void onPacketSending(PacketEvent event) {
                 int chunkX = event.getPacket().getIntegers().read(0);
                 int chunkZ = event.getPacket().getIntegers().read(1);
 
-                event.setPacket(getChunkPacket(event.getPlayer(), chunkX, chunkZ));
+                ChunkPacket chunkPacket = getChunkPacket(event.getPlayer(), chunkX, chunkZ);
+                if(!chunkPacket.isValid()) {
+                    return;
+                }
+
+                event.setPacket(chunkPacket);
+
+                ChunkRenderSettings playerSettings = playerRenderSettings.get(event.getPlayer().getUniqueId());
+                if(playerSettings != null) {
+                    playerSettings.getClientsideChunks().put(chunkPacket.getChunkKey(), chunkPacket.getWorld());
+                }
             }
         });
 
@@ -48,7 +69,7 @@ public class ChunkRenderingSystem {
             @Override
             public void onPacketSending(PacketEvent event) {
                 Player player = event.getPlayer();
-                ChunkRenderSettings renderSettings = playerRenderSettings.get(player);
+                ChunkRenderSettings renderSettings = playerRenderSettings.get(player.getUniqueId());
 
                 if(renderSettings == null)
                     return;
@@ -65,14 +86,10 @@ public class ChunkRenderingSystem {
                 if(!worldBlockData.equals(packetBlockData))
                     return;
 
-                World renderAsWorld = renderSettings.getRenderWorldAs().get(location.getWorld());
-                Chunk renderAsChunk = renderSettings.getRenderChunkAs().get(location.getChunk());
-
-                if(renderAsWorld == null && renderAsChunk == null)
-                    return;
+                World renderChunkWorld = renderSettings.getRenderChunk(location.getWorld(), location.getChunk().getX(), location.getChunk().getZ());
 
                 // Get the fake block, and simply swap the type of the packet
-                Location renderLocation = new Location(renderAsWorld != null ? renderAsWorld : renderAsChunk.getWorld(), position.getX(), position.getY(), position.getZ());
+                Location renderLocation = new Location(renderChunkWorld, position.getX(), position.getY(), position.getZ());
                 WrappedBlockData data = WrappedBlockData.createData(renderLocation.getBlock().getBlockData());
 
                 event.getPacket().getBlockData().write(0, data);
@@ -80,12 +97,34 @@ public class ChunkRenderingSystem {
         });
     }
 
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        removeRendering(event.getPlayer());
+    }
+
     /**
-     * Updates the chunks around a player based on the specified render distance.
+     * Updates the chunks associated with the specified player, ensuring the
+     * appropriate rendering system is used based on the configuration.
+     * Determines whether to update the chunks in real-time or via a full refresh.
      *
-     * @param player the player for whom the chunks are updated
+     * @param player the player whose chunks are being updated
      */
     public void updateChunks(Player player) {
+        new StartPlayerWorldRenderingReloadEvent(player).callEvent();
+
+        if(Mirage.getInstance().getMirageConfig().isUseRealtimeWorldLoading())
+            updateChunksRealtime(player);
+        else
+            refreshWorld(player);
+    }
+
+    /**
+     * Refreshes the player's world by temporarily teleporting the player to a different world and then returning them
+     * to their original location. This method triggers events to signal the start and end of the player's world rendering reload.
+     *
+     * @param player the player whose world will be refreshed
+     */
+    private void refreshWorld(Player player) {
         Location location = player.getLocation();
         Optional<World> randomWorld = Bukkit.getWorlds().stream().filter(world -> world != player.getWorld()).findFirst();
 
@@ -94,6 +133,134 @@ public class ChunkRenderingSystem {
 
         player.teleport(location);
         new FinishPlayerWorldRenderingReloadEvent(player).callEvent();
+    }
+
+    /**
+     * Updates the chunks visible to the specified player within their configured view distance.
+     * The method calculates chunks around the player's current location, sorts them by distance,
+     * generates update packets for these chunks, and sends them to the player.
+     *
+     * @param player the player whose chunks need to be updated
+     */
+    private void updateChunksRealtime(Player player) {
+        World world = player.getWorld();
+        Location playerLocation = player.getLocation();
+        int playerX = playerLocation.getBlockX() >> 4;
+        int playerZ = playerLocation.getBlockZ() >> 4;
+        int viewDistance = Math.min(player.getViewDistance(), Mirage.getInstance().getMirageConfig().getMaxRealtimeWorldLoadingRenderDistance());
+
+        List<Chunk> chunksToUpdate = new ArrayList<>();
+
+        for (int x = playerX - viewDistance; x <= playerX + viewDistance; x++) {
+            for (int z = playerZ - viewDistance; z <= playerZ + viewDistance; z++) {
+                if (world.isChunkLoaded(x, z)) {
+                    chunksToUpdate.add(world.getChunkAt(x, z));
+                }
+            }
+        }
+
+        // Sort by distance from player (closest first)
+        chunksToUpdate.sort(Comparator.comparingDouble(chunk -> {
+            double dx = chunk.getX() - playerX;
+            double dz = chunk.getZ() - playerZ;
+            return dx * dx + dz * dz;
+        }));
+
+        List<MultiBlockPacket> packets = new ArrayList<>();
+        for(Chunk chunk : chunksToUpdate) {
+            packets.addAll(updateChunk(player, chunk));
+        }
+
+        sendSectionPackets(player, packets);
+    }
+
+    /**
+     * Sends a list of {@code MultiBlockPacket} objects to a player in batches to update world sections,
+     * distributing the packet sending process over multiple ticks to avoid client-side stuttering.
+     *
+     * @param player the player to whom the packets are sent
+     * @param packets the {@code List} of {@code MultiBlockPacket} objects representing the world sections to update
+     */
+    private void sendSectionPackets(Player player, List<MultiBlockPacket> packets) {
+        BukkitRunnable previousTask = playerRenderingTasks.remove(player.getUniqueId());
+        if (previousTask != null)
+            previousTask.cancel();
+
+        // Run over multiple ticks to prevent client-side stuttering
+        BukkitRunnable task = new BukkitRunnable() {
+            private final Iterator<MultiBlockPacket> iterator = packets.iterator();
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || !iterator.hasNext()) {
+                    if (player.isOnline())
+                        new FinishPlayerWorldRenderingReloadEvent(player).callEvent();
+
+                    this.cancel();
+                    playerRenderingTasks.remove(player.getUniqueId());
+                    return;
+                }
+
+                for(int i = 0; i < 8 && iterator.hasNext(); i++) {
+                    MultiBlockPacket packet = iterator.next();
+                    ProtocolLibrary.getProtocolManager().sendServerPacket(player, packet);
+                }
+            }
+        };
+
+        playerRenderingTasks.put(player.getUniqueId(), task);
+        task.runTaskTimer(Mirage.getInstance(), 0, 1);
+    }
+
+    /**
+     * Updates the specified chunk for the given player by comparing the current rendered sections
+     * with the previously loaded ones, generating packets for the client to update only the differing sections.
+     *
+     * @param player the player for whom the chunk is updated
+     * @param chunk the chunk to be updated
+     * @return a list of {@code MultiBlockPacket} objects representing the sections that need to be updated
+     */
+    private List<MultiBlockPacket> updateChunk(Player player, Chunk chunk) {
+        List<MultiBlockPacket> packets = new ArrayList<>();
+
+        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player.getUniqueId());
+        World renderWorld = chunkRenderSettings.getRenderWorldAs().get(chunk.getWorld());
+        World previousWorld = Objects.requireNonNullElse(chunkRenderSettings.getClientsideChunks().get(chunk.getChunkKey()), chunk.getWorld());
+
+        ServerChunkCache chunkRenderWorldCache = ((CraftWorld) renderWorld).getHandle().getChunkSource();
+        ServerChunkCache previousWorldCache = ((CraftWorld) previousWorld).getHandle().getChunkSource();
+        LevelChunk nmsRenderChunk = chunkRenderWorldCache.getChunk(chunk.getX(), chunk.getZ(), !chunkRenderWorldCache.hasChunk(chunk.getX(), chunk.getZ()));
+        LevelChunk nmsPreviousChunk = previousWorldCache.getChunk(chunk.getX(), chunk.getZ(), !previousWorldCache.hasChunk(chunk.getX(), chunk.getZ()));
+
+        if(nmsRenderChunk == null || nmsPreviousChunk == null)
+            return packets;
+
+        LevelChunkSection[] sections = nmsRenderChunk.getSections();
+        LevelChunkSection[] previousSections = nmsPreviousChunk.getSections();
+
+        for (int i = 0; i < sections.length; i++) {
+            LevelChunkSection section = sections[i];
+
+            if (section == null || isSameSection(section, previousSections[i])) {
+                continue;
+            }
+
+            int sectionY = nmsRenderChunk.getSectionYFromSectionIndex(i);
+            SectionPos sectionPos = SectionPos.of(chunk.getX(), sectionY, chunk.getZ());
+
+            packets.add(new MultiBlockPacket(sectionPos, section));
+        }
+
+        chunkRenderSettings.getClientsideChunks().put(chunk.getChunkKey(), renderWorld);
+        return packets;
+    }
+
+    private boolean isSameSection(LevelChunkSection section, LevelChunkSection originalSection) {
+        for(int i = 0; i < 4096; i++)
+            if(!section.getStates().get(i).is(originalSection.getStates().get(i).getBlock()))
+                return false;
+
+        return true;
     }
 
     /**
@@ -107,10 +274,10 @@ public class ChunkRenderingSystem {
      * @param visualizer the visualizer world to render
      */
     public void renderWorldAs(Player player, World world, World visualizer) {
-        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player);
+        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player.getUniqueId());
 
         if(chunkRenderSettings == null) {
-            playerRenderSettings.put(player, new ChunkRenderSettings(world, visualizer));
+            playerRenderSettings.put(player.getUniqueId(), new ChunkRenderSettings(world, visualizer));
             return;
         }
 
@@ -128,14 +295,14 @@ public class ChunkRenderingSystem {
      * @param visualizer the visualizer chunk to render
      */
     public void renderChunkAs(Player player, Chunk chunk, Chunk visualizer) {
-        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player);
+        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player.getUniqueId());
 
         if(chunkRenderSettings == null) {
-            playerRenderSettings.put(player, new ChunkRenderSettings(chunk, visualizer));
+            playerRenderSettings.put(player.getUniqueId(), new ChunkRenderSettings(chunk, visualizer));
             return;
         }
 
-        chunkRenderSettings.getRenderChunkAs().put(chunk, visualizer);
+        chunkRenderSettings.getRenderChunkAs().put(chunk.getChunkKey(), visualizer.getWorld());
     }
 
     /**
@@ -147,7 +314,7 @@ public class ChunkRenderingSystem {
      * @param player the player for whom to remove the rendering settings
      */
     public void removeRendering(Player player) {
-        playerRenderSettings.remove(player);
+        playerRenderSettings.remove(player.getUniqueId());
     }
 
     /**
@@ -164,7 +331,7 @@ public class ChunkRenderingSystem {
      * @param world the world to remove from rendering settings
      */
     public void removeWorldRendering(Player player, World world) {
-        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player);
+        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player.getUniqueId());
 
         if(chunkRenderSettings == null) {
             return;
@@ -183,25 +350,25 @@ public class ChunkRenderingSystem {
      * @param chunk the chunk to remove from rendering settings
      */
     public void removeChunkRendering(Player player, Chunk chunk) {
-        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player);
+        ChunkRenderSettings chunkRenderSettings = playerRenderSettings.get(player.getUniqueId());
 
         if(chunkRenderSettings == null) {
             return;
         }
 
-        chunkRenderSettings.getRenderChunkAs().remove(chunk);
+        chunkRenderSettings.getRenderChunkAs().remove(chunk.getChunkKey());
+    }
+
+    private World getRenderWorld(Player player, int chunkX, int chunkZ) {
+        ChunkRenderSettings renderSettings = playerRenderSettings.get(player.getUniqueId());
+
+        if(renderSettings == null)
+            return player.getWorld();
+
+        return renderSettings.getRenderChunk(player.getWorld(), chunkX, chunkZ);
     }
 
     private ChunkPacket getChunkPacket(Player player, int chunkX, int chunkZ) {
-        ChunkRenderSettings renderSettings = playerRenderSettings.get(player);
-        Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
-
-        if(renderSettings == null)
-            return new ChunkPacket(chunkX, chunkZ, chunk);
-
-        World renderWorld = renderSettings.getRenderWorldAs().get(player.getWorld());
-        Chunk renderChunk = renderWorld != null ? renderWorld.getChunkAt(chunkX, chunkZ) : renderSettings.getRenderChunkAs().get(chunk);
-
-        return new ChunkPacket(chunkX, chunkZ, Objects.requireNonNullElse(renderChunk, chunk));
+        return new ChunkPacket(chunkX, chunkZ, getRenderWorld(player, chunkX, chunkZ));
     }
 }

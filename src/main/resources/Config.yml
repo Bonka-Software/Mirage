@@ -1,0 +1,8 @@
+# Realtime world loading, disabling this will show a loading screen when switching world rendering.
+# The plugin will be a bit more performant when disabled,
+# but realtime world loading is more compatible with plugins like custom mobs and other packet modifying plugins.
+use-realtime-world-loading: true
+
+# Max render distance for realtime world loading, get exponentially more expensive at higher values.
+# Will automatically use the server's render distance, but will cap out at the amount set here.
+max-realtime-world-loading-render-distance: 12

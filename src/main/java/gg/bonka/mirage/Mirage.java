@@ -1,6 +1,7 @@
 package gg.bonka.mirage;
 
 import co.aikar.commands.PaperCommandManager;
+import gg.bonka.mirage.configuration.MirageConfig;
 import gg.bonka.mirage.filesystem.WorldsDirectoryManager;
 import gg.bonka.mirage.misc.ConsoleLogger;
 import gg.bonka.mirage.commands.WorldCommand;
@@ -15,10 +16,13 @@ import java.io.IOException;
 
 public final class Mirage extends JavaPlugin {
 
-    private final static String version = "1.1.6";
+    private final static String version = "1.2.0";
 
     @Getter
     private static Mirage instance;
+
+    @Getter
+    private MirageConfig mirageConfig;
 
     @Getter
     private PaperCommandManager commandManager;
@@ -30,6 +34,8 @@ public final class Mirage extends JavaPlugin {
         }
 
         instance = this;
+        mirageConfig = new MirageConfig();
+
         ConsoleLogger.info(String.format("Mirage [%s] has been enabled!", version));
 
         try {

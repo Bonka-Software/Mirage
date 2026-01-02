@@ -10,13 +10,13 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.1.7
+#### Version 1.2.0
 This version of Mirage contains:
 - Mirage world loading
 - Backup system
 - Rollbacks
 - Per world (in-game) configurability
-- Per player chunk rendering (Mainly available through the API)
+- Seamless per player chunk rendering (Mainly available through the API)
 
 ![WorldSwitching-ezgif com-optimize](https://github.com/user-attachments/assets/b2a496a7-3b4b-4d18-8eb5-2f7d5fd5ea2a)
 
@@ -37,7 +37,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.1.7</version>
+    <version>1.2.0</version>
     <scope>provided</scope>
 </dependency>
 ```
