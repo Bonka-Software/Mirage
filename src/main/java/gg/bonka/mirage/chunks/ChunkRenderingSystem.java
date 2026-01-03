@@ -147,7 +147,9 @@ public class ChunkRenderingSystem implements Listener {
         Location playerLocation = player.getLocation();
         int playerX = playerLocation.getBlockX() >> 4;
         int playerZ = playerLocation.getBlockZ() >> 4;
-        int viewDistance = Math.min(player.getViewDistance(), Mirage.getInstance().getMirageConfig().getMaxRealtimeWorldLoadingRenderDistance());
+
+        // We add 1 because clients always keep an extra chunk in their cache.
+        int viewDistance = Math.min(player.getViewDistance(), Mirage.getInstance().getMirageConfig().getMaxRealtimeWorldLoadingRenderDistance()) + 1;
 
         List<Chunk> chunksToUpdate = new ArrayList<>();
 
