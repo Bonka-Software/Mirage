@@ -10,7 +10,7 @@ The world tracking system also allows for runtime rollbacks without kicking play
 
 ---
 
-#### Version 1.2.0
+#### Version 1.2.1
 This version of Mirage contains:
 - Mirage world loading
 - Backup system
@@ -37,7 +37,7 @@ These are all the same world, just rendering as different mirage worlds! Using /
 <dependency>
     <groupId>gg.bonka</groupId>
     <artifactId>Mirage</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <scope>provided</scope>
 </dependency>
 ```
